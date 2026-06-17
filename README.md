@@ -3,12 +3,17 @@
 Vietnamese TTS **data pipeline** for VSF (Vin Smart Future).
 Turns raw / crawled audio into clean, labeled speech segments ready for TTS training.
 
-```text
-YouTube / raw audio
-   → Demucs (vocal separation)
-   → clean (mono 16 kHz 16-bit WAV)
-   → VAD (speech segmentation)
-   → labels.csv / labels.jsonl
+```mermaid
+flowchart LR
+    A[YouTube / raw audio] --> B{Demucs<br/>on by default}
+    B -->|vocal stem| C[Clean<br/>mono 16 kHz 16-bit WAV]
+    B -. raw fallback .-> C
+    C --> D[VAD<br/>speech segmentation]
+    D --> E[segments/*.wav]
+    D --> F[labels.csv / labels.jsonl]
+
+    classDef out fill:#e8f5e9,stroke:#43a047;
+    class E,F out;
 ```
 
 ---
@@ -25,6 +30,28 @@ YouTube / raw audio
 
 Demucs runs on full-quality raw audio; only the vocal stem is downsampled and fed
 into VAD, so segments are clean speech (better for TTS).
+
+### Two run modes
+
+```mermaid
+flowchart TD
+    subgraph crawl[Full crawl → labels]
+        U[urls.txt] --> CR[VSF-audio-pipeline<br/>crawl + subtitles]
+        CR --> RAW1[raw audio]
+    end
+    subgraph local[Audio already on disk]
+        RAW2[--raw-dir folder]
+    end
+    RAW1 --> DEM
+    RAW2 --> DEM
+    DEM[Demucs vocal sep] --> CL[Clean 16 kHz] --> VAD[VAD segment] --> OUT[(labels + segments)]
+
+    classDef ext fill:#fff3e0,stroke:#fb8c00;
+    class CR ext;
+```
+
+`scripts/run_vsf_github_to_labels.py` = full crawl mode.
+`scripts/end_to_end_pipeline.py` = local audio mode.
 
 ## Repo layout
 
