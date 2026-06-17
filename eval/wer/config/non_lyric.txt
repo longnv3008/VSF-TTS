@@ -1,0 +1,43 @@
+# Cụm KHÔNG phải lyric — lọc khỏi CẢ reference lẫn hypothesis ở mức "normalized".
+# 1 dòng = 1 cụm (tự lowercase khi so khớp; khớp theo ranh giới token).
+# Cụm dài tự động lọc trước cụm ngắn. Sửa thoải mái theo dữ liệu thực tế.
+#
+# Lưu ý: markup trong ngoặc [âm nhạc] [Vỗ tay] (Music) đã bị regex bóc tự động,
+# không cần liệt kê ở đây. Mục dưới là quảng cáo kênh + ad-lib không-lời.
+
+# --- quảng cáo / kêu gọi kênh ---
+hãy đăng ký kênh để ủng hộ kênh của mình nhé
+hãy đăng ký kênh
+đăng ký kênh
+để ủng hộ kênh của mình nhé
+ủng hộ kênh của mình
+ủng hộ kênh
+hãy subscribe cho kênh la la school
+subscribe cho kênh la la school
+subscribe
+la la school
+để không bỏ lỡ những video hấp dẫn
+nhấn chuông thông báo
+bấm chuông
+like và share
+like share
+# outro / kênh khác gặp trong label thực tế
+cảm ơn các bạn đã theo dõi và hẹn gặp lại
+cảm ơn các bạn đã theo dõi
+hãy cho kênh ghiền mì gõ
+cho kênh ghiền mì gõ
+ghiền mì gõ
+
+# --- ad-lib / không-lời (bật/tắt tùy bài) ---
+na na na na na na na
+na na na na
+na na na
+na na
+la la la la
+la la la
+yeah yeah
+yeah
+oh oh oh
+oh oh
+ooh ooh
+ooh

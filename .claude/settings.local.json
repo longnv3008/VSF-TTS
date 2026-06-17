@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(python -m pytest VAD/tests/test_end_to_end_demucs.py -q)",
+      "PowerShell($env:UV_PROJECT_ENVIRONMENT = Join-Path $env:TEMP \"vsf_test_venv\"; uv run --directory \"external_repos\\\\VSF-audio-pipeline\\\\backend\" python -m pytest -q tests/test_vocal_separation.py)",
+      "PowerShell($env:UV_PROJECT_ENVIRONMENT = Join-Path $env:TEMP \"vsf_test_venv\"; uv run --directory \"external_repos\\\\VSF-audio-pipeline\\\\backend\" python -m pytest -q)",
+      "PowerShell(python -m pytest VAD/tests -q 2>&1)",
+      "Bash(python -m pytest VAD/tests/test_demucs_env.py -v)",
+      "PowerShell(git check-ignore external_repos/VSF-audio-pipeline VAD/logs/tritonserver.log pipeline_runs/gpu_e2e finetune/data/train.npz finetune/data_energy/val.npz)",
+      "PowerShell(\"--- must ALL print now \\(ignored\\) ---\")",
+      "PowerShell(\"--- done ---\")"
+    ]
+  }
+}

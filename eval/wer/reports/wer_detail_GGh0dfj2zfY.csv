@@ -1,0 +1,32 @@
+﻿segment_id,n_ref,n_hyp,S,D,I,C,wer,flag,reference_norm,hypothesis_norm
+yt_GGh0dfj2zfY__sent000001,0,0,0,0,0,0,,no_ref,,
+yt_GGh0dfj2zfY__sent000002,10,10,6,0,0,4,0.6000,,góc phố nơi anh hẹn cành ngọc lan xòa bóng,g phống nơi anh hè cnh ngọc lan xoa bó
+yt_GGh0dfj2zfY__sent000003,5,5,4,0,0,1,0.8000,,mát tỏa hương bát ngát,ma tòa hương bá ngã
+yt_GGh0dfj2zfY__sent000004,18,19,5,0,1,13,0.3333,,báo với em ngày cuối thu buồn chờ anh bao lâu trông mong mỏi mòn mà chẳng thấy,h báo với em ngày cối thu buồn chờ anh bao lâu trong mông môi môn mà chẳng thấy
+yt_GGh0dfj2zfY__sent000005,1,1,1,0,0,0,1.0000,,anh,ai
+yt_GGh0dfj2zfY__sent000006,10,20,4,0,10,6,1.4000,,lan xòa bóng mát và vẫn hương thơm nơi ta,từ ngày nào em mới quên anh vẫn cành ngồ là xòa bông ban và vẫn hướng thơm nơi ta
+yt_GGh0dfj2zfY__sent000007,12,11,5,1,0,6,0.5000,,ta đã hẹn một nhành lan anh hái cho em để mãi,đã h một nhanh lắng anh hãi cho em để m
+yt_GGh0dfj2zfY__sent000008,13,13,4,0,0,9,0.3077,,là một chút hương ngày cuối thu sẽ mãi mãi yêu anh là,l một chút hương ngày cuối thu xem m mới yêu anh là
+yt_GGh0dfj2zfY__sent000009,12,11,8,1,0,3,0.7500,,là thế sẽ mãi mãi hương ngọc lan còn còn trong giấc,thế và xem m mới hương ngồ lan con cò trong
+yt_GGh0dfj2zfY__sent000010,18,18,8,1,1,9,0.5556,,giấc mơ sẽ mãi mãi yêu anh là thế sẽ mãi mãi vì trái tim em đã trao,sáng mau xem m mãi yêu anh là thế mà xem mãi mãi vì trá đ m đã
+yt_GGh0dfj2zfY__sent000011,10,8,4,2,0,4,0.6000,,trao gửi anh tình nồng như thoáng hương dịu dàng,chào cười ai tình nồng như pháng hương
+yt_GGh0dfj2zfY__sent000012,0,1,0,0,1,0,,spurious,,h
+yt_GGh0dfj2zfY__sent000013,0,0,0,0,0,0,,no_ref,,
+yt_GGh0dfj2zfY__sent000014,13,10,6,3,0,4,0.6923,,ngọc lan góc phố nơi anh hẹn cành ngọc lan xòa bóng mát,gâu vố nơi anh hè cnh ngọc lan xoa bó
+yt_GGh0dfj2zfY__sent000015,5,4,3,1,0,1,0.8000,,ngát tỏa hương bát ngát,ma tò hương bá
+yt_GGh0dfj2zfY__sent000016,12,19,3,1,8,8,1.0000,,chờ anh bao lâu trông mong mỏi mòn mà chẳng thấy anh,nga bao với em ngày cúi thu buồn chờ anh bao lâu trong mong môi mò mà chẳng thấy
+yt_GGh0dfj2zfY__sent000017,11,11,5,1,1,5,0.6364,,từng ngày nào em mới quen anh vẫn cành ngọc lan,ai từ ngày nào em mới quên ai vẫn cay ngọ
+yt_GGh0dfj2zfY__sent000018,12,11,4,1,0,7,0.4167,,lan xòa bóng mát và vẫn hương thơm nơi ta đã hẹn,l xoa bong ma và vẫn hương thơm nơi ta đã
+yt_GGh0dfj2zfY__sent000019,11,11,7,0,0,4,0.6364,,hẹn một nhành lan anh hái cho em để mãi là,hẹ muốn nhanh lại anh hãi cho em để m a
+yt_GGh0dfj2zfY__sent000020,12,6,2,7,1,3,0.8333,,một chút hương ngày cuối thu sẽ mãi mãi yêu anh là,lại một chút hương ngà cối
+yt_GGh0dfj2zfY__sent000021,12,11,5,1,0,6,0.5000,,sẽ mãi mãi yêu anh là thế sẽ mãi mãi vì trái,thua m yêu anh là thế xem m m vì trái
+yt_GGh0dfj2zfY__sent000022,12,10,6,2,0,4,0.6667,,trái tim em đã trao gửi anh tình nồng như thoáng hương,tim m đ chào người a tình nồng như quang
+yt_GGh0dfj2zfY__sent000023,20,20,10,0,0,10,0.5000,,hương dịu dàng hương lan bay xa một trưa cuối thu thương anh yêu anh góc phố nơi hẹn hò,hương dịu dà h là bch xa một chiều cối thù thương anh yêu anh đ bốt nơi hẹn hồ
+yt_GGh0dfj2zfY__sent000024,6,5,2,1,0,3,0.5000,,mùi lan thơm ngát cùng gió,mùi lan thăm ngan cùng
+yt_GGh0dfj2zfY__sent000025,10,16,7,1,7,2,1.5000,,chớm đông hoa thơm lụi tàn để gió mãi cuốn,gi xẽ đêm mai néu biết trước cháp đống hoa thầm ngườii tàng nề gi mãi
+yt_GGh0dfj2zfY__sent000026,16,12,7,4,0,5,0.6875,,cuốn đi để mãi bâng khuâng bâng khuâng nơi anh hẹn với em sẽ mãi mãi,cố đi để mãi b kh b kh nơi ai hem với
+yt_GGh0dfj2zfY__sent000027,4,3,3,1,0,0,1.0000,,hương ngọc lan còn,em th x
+yt_GGh0dfj2zfY__sent000028,10,17,6,0,7,4,1.3000,,sẽ mãi mãi yêu anh là thế sẽ mãi mãi,m c trong gi c trong gi em an mới yêu anh là thế xem m mơ
+yt_GGh0dfj2zfY__sent000029,15,14,9,1,0,5,0.6667,,vì trái tim em đã trao gửi anh tình nồng như thoáng hương dịu dàng,việc trái tim m đ chào cười ơ tình nồ nh quá hương dịu
+yt_GGh0dfj2zfY__sent000030,0,1,0,0,1,0,,spurious,,âm
+yt_GGh0dfj2zfY__sent000031,0,1,0,0,1,0,,spurious,,nhạc

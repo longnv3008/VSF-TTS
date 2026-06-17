@@ -1,0 +1,5 @@
+onnxruntime>=1.16.1
+numpy==1.23.5
+pyloudnorm==0.1.1
+pydantic==2.10.6
+loguru==0.7.3

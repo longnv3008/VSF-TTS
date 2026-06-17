@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($env:UV_PROJECT_ENVIRONMENT = \"$env:TEMP\\\\vsf-backend-venv\"; uv run --directory \"E:\\\\VSF\\\\TTS\\\\external_repos\\\\VSF-audio-pipeline\\\\backend\" pytest tests/test_vocal_separation.py -v 2>&1)",
+      "PowerShell($env:UV_PROJECT_ENVIRONMENT = \"$env:TEMP\\\\vsf-backend-venv\"; uv run --directory external_repos/VSF-audio-pipeline/backend pytest tests/test_vocal_separation.py -v)",
+      "Bash(python -m pytest VAD/tests -q)",
+      "Bash(python scripts/end_to_end_pipeline.py --help)",
+      "PowerShell($env:UV_PROJECT_ENVIRONMENT = \"$env:TEMP\\\\vsf-backend-venv\"; uv run --directory external_repos/VSF-audio-pipeline/backend pytest -q 2>&1 | Select-Object -Last 20)",
+      "PowerShell($env:UV_PROJECT_ENVIRONMENT = \"$env:TEMP\\\\vsf-backend-venv\"; uv run --directory external_repos/VSF-audio-pipeline/backend pytest 2>&1 | Select-String -Pattern \"passed|failed|error\")",
+      "PowerShell(python --version; Write-Output \"---\"; python -c \"import sys; print\\(sys.executable\\)\"; Write-Output \"---disk---\"; \\(Get-PSDrive E | Select-Object Used,Free | Format-List | Out-String\\).Trim\\(\\))",
+      "PowerShell($dst = \"E:\\\\VSF\\\\TTS\\\\pipeline_runs\\\\demucs_e2e\\\\raw\"; New-Item -ItemType Directory -Force -Path $dst | Out-Null; Copy-Item \"E:\\\\VSF\\\\TTS\\\\tmp\\\\vfva-ba-oov-117-org-1.wav\" $dst; Copy-Item \"E:\\\\VSF\\\\TTS\\\\tmp\\\\vfva-ba-oov-118-org-1.wav\" $dst; Get-ChildItem $dst | ForEach-Object { \"{0}  {1:N0} bytes\" -f $_.Name, $_.Length })",
+      "PowerShell(& E:\\\\VSF\\\\TTS\\\\.venv-demucs\\\\Scripts\\\\python.exe -m demucs -h 2>&1 | Select-Object -First 3; Write-Output \"exit=$LASTEXITCODE\")"
+    ]
+  }
+}

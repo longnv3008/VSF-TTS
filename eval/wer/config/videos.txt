@@ -1,0 +1,5 @@
+# 3 video target — định dạng: video_id,transcript_source,title
+# (dòng trống và dòng bắt đầu '#' bị bỏ qua)
+GGh0dfj2zfY,vtt,Kimmese - Hương Ngọc Lan
+GjSi4OxJORY,vtt,Kimmese - Loving You Sunny ft. Sunny
+i724lraI93s,asr,BỐN CHỮ LẮM (MV) - TRÚC NHÂN - TRƯƠNG THẢO NHI

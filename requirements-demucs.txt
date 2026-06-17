@@ -1,0 +1,23 @@
+# Demucs vocal-separation env (kept separate from the VAD env, which has no torch).
+#
+# Create a dedicated env and point the pipeline at it:
+#
+#   python -m venv .venv-demucs
+#   .venv-demucs\Scripts\pip install -r requirements-demucs.txt   # Windows
+#   # then run the pipeline with the matching python:
+#   python scripts/end_to_end_pipeline.py --raw-dir tmp --demucs \
+#     --demucs-cmd ".venv-demucs/Scripts/python -m demucs" --demucs-device cpu
+#
+# For the crawl path set DEMUCS_ENABLED=true and DEMUCS_COMMAND to the same python.
+# Use --demucs-device cuda (CUDA build of torch) for large batches; CPU is slow.
+
+# Pin the torch stack to 2.2.x: torchaudio >= 2.9 routes save() through
+# torchcodec (extra native FFmpeg libs, breaks Demucs out of the box). 2.2.x
+# uses the soundfile backend, which Just Works for Demucs' WAV writes.
+# torch 2.2.x is built against the NumPy 1.x ABI; NumPy 2.x triggers
+# "Failed to initialize NumPy" and breaks Demucs at runtime. Pin below 2.
+numpy<2
+torch==2.2.2
+torchaudio==2.2.2
+soundfile>=0.12
+demucs>=4.0

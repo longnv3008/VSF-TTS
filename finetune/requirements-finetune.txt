@@ -1,0 +1,9 @@
+torch>=2.0
+torchaudio>=2.0
+onnx>=1.14
+onnxruntime>=1.16
+onnx2torch>=1.5
+numpy
+scikit-learn
+tqdm
+h5py

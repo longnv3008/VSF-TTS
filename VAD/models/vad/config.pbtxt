@@ -1,0 +1,140 @@
+name: "vad"
+backend: "python"
+
+max_batch_size: 1024
+
+parameters [
+  {
+    key: "model_path"
+    value: { string_value: "/models/vad/1/vad.onnx" }
+  },
+  {
+    key: "chunk_ms"
+    value: { string_value: "32" }
+  },
+  {
+    key: "context_ms"
+    value: { string_value: "4" }
+  },
+  {
+    key: "reset_duration"
+    value: { string_value: "5" }
+  },
+  {
+    key: "device"
+    value: { string_value: "cpu" }
+  }
+]
+
+sequence_batching{
+    max_sequence_idle_microseconds: 50000000 # The sequence is closed automatically when no new data for 5s
+    oldest {
+      max_candidate_sequences: 6000
+      max_queue_delay_microseconds: 5000 # Wait 5ms for more requests
+    }
+    control_input [
+        {
+            name: "START",
+            control [
+                {
+                    kind: CONTROL_SEQUENCE_START
+                    fp32_false_true: [0, 1]
+                }
+            ]
+        },
+        {
+            name: "READY"
+            control [
+                {
+                    kind: CONTROL_SEQUENCE_READY
+                    fp32_false_true: [0, 1]
+                }
+            ]
+        },
+        {
+            name: "CORRID",
+            control [
+                {
+                    kind: CONTROL_SEQUENCE_CORRID
+                    data_type: TYPE_UINT64
+                }
+            ]
+        },
+        {
+            name: "END",
+            control [
+                {
+                    kind: CONTROL_SEQUENCE_END
+                    fp32_false_true: [0, 1]
+                }
+            ]
+        }
+    ]
+}
+
+input [
+  {
+    name: "INPUT"
+    data_type: TYPE_INT16
+    dims: [-1]
+    # allowed_shape: [2560]
+    # allowed_shape: [5120]
+  },
+  {
+    name: "SESSION"
+    data_type: TYPE_STRING
+    dims: [1]
+  },
+  {
+    name: "RATE"
+    data_type: TYPE_INT16
+    dims: [1]
+    # allowed_values: [8000, 16000]
+  },
+  {
+    name: "THRESHOLD"
+    data_type: TYPE_FP16
+    dims: [1]
+  },
+  {
+    name: "VOLUME"
+    data_type: TYPE_FP16
+    dims: [1]
+  },
+  {
+    name: "START_SECS"
+    data_type: TYPE_FP16
+    dims: [1]
+  },
+  {
+    name: "STOP_SECS"
+    data_type: TYPE_FP16
+    dims: [1]
+  }
+]
+
+output [
+  {
+    name: "OUTPUT"
+    data_type: TYPE_FP32
+    dims: [-1]
+  },
+  {
+    name: "SIGNAL"
+    data_type: TYPE_STRING
+    dims: [1]
+  }
+]
+
+instance_group [
+    {
+      count: 4
+      kind: KIND_CPU
+    }
+]
+
+optimization { execution_accelerators {
+  cpu_execution_accelerator : [ {
+    name : "openvino"
+  }]
+}}

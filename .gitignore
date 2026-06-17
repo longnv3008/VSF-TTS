@@ -1,0 +1,54 @@
+# === Virtual environments (~16GB) ===
+.venv-vad/
+.venv-demucs/
+.venv-demucs-cu128/
+.venv/
+venv/
+
+# === Nested repo / generated output / datasets / logs ===
+# external_repos: separate git repo, 7.6GB
+external_repos/
+# pipeline_runs: generated per-run output, 2.9GB
+pipeline_runs/
+# VAD/logs: trace.json.* , 713MB
+VAD/logs/
+VAD/outputs/
+# finetune/data*: train.npz 1.4GB each
+finetune/data/
+finetune/data_energy/
+finetune/data_tts_energy_check/
+
+# === Python cache ===
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+
+# === Loose audio (models .onnx/.pth NOT matched, stay tracked) ===
+*.wav
+*.mp3
+*.m4a
+*.aac
+*.flac
+*.ogg
+*.opus
+*.webm
+*.mp4
+*.mkv
+tmp/
+
+# === Generated reports / logs ===
+finetune/evaluation_report_*.csv
+finetune/training_log*.json
+
+# === Secrets / env ===
+.env
+*.env
+!.env.example
+
+# === Editor / OS ===
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

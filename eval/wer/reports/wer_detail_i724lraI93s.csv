@@ -1,0 +1,35 @@
+﻿segment_id,n_ref,n_hyp,S,D,I,C,wer,flag,reference_norm,hypothesis_norm
+yt_i724lraI93s__sent000001,0,0,0,0,0,0,,no_ref,,
+yt_i724lraI93s__sent000002,0,0,0,0,0,0,,no_ref,,
+yt_i724lraI93s__sent000003,0,0,0,0,0,0,,no_ref,,
+yt_i724lraI93s__sent000004,0,0,0,0,0,0,,no_ref,,
+yt_i724lraI93s__sent000005,0,0,0,0,0,0,,no_ref,,
+yt_i724lraI93s__sent000006,31,38,0,0,7,31,0.2258,,yêu là đau thương là đau sao chờ mong người đi về đâu vẫn nhớ về tình là có không khi nào tay cầm tay thương là thương sao chờ mong,yêu là đau thương là đau sao chờ mong người đi về đâu vẫn nhớ về tình là có không khi nào tay cầm tay thương là thương sao chờ mong người đi về đâu vẫn nhớ về
+yt_i724lraI93s__sent000007,31,1,1,30,0,0,1.0000,,ngày mai ai biết ra sao người có đi xa tận phương trời nắng trong mưa tìm nhau chờ một ngày yêu thương lả lơi nói cho nhau một câu để,hãy
+yt_i724lraI93s__sent000008,34,1,1,33,0,0,1.0000,,từng ngày ta thôi còn trông ngóng trái tim thôi ngủ yên để từng đêm ta say triền miên để đêm nay ngừng trôi một mình anh nơi đây vẫn thao thức yêu lắm,hãy
+yt_i724lraI93s__sent000009,15,15,0,0,0,15,0.0000,,thương lắm mà xa lắm đau lắm ai buồn ai buồn em buồn vì ai,thương lắm mà xa lắm đau lắm ai buồn ai buồn em buồn vì ai
+yt_i724lraI93s__sent000010,15,15,0,0,0,15,0.0000,,thương lắm mà xa lắm đau lắm ai chờ mong chờ em chờ đợi anh,thương lắm mà xa lắm đau lắm ai chờ mong chờ em chờ đợi anh
+yt_i724lraI93s__sent000011,0,0,0,0,0,0,,no_ref,,
+yt_i724lraI93s__sent000012,0,0,0,0,0,0,,no_ref,,
+yt_i724lraI93s__sent000013,31,38,0,0,7,31,0.2258,,yêu là đau thương là đau sao chờ mong người đi về đâu vẫn nhớ về tình là có không khi nào tay cầm tay thương là thương sao chờ mong,yêu là đau thương là đau sao chờ mong người đi về đâu vẫn nhớ về tình là có không khi nào tay cầm tay thương là thương sao chờ mong người đi về đâu vẫn nhớ về
+yt_i724lraI93s__sent000014,30,30,5,0,0,25,0.1667,,ngày mai ai biết ra sao người có đi xa tận phương trời nắng trong mưa tìm nhau chờ một ngày yêu thương lả lơi nói cho nhau một câu,ngày mai ai biết ra sao người có đi xa tận phương trời nói chung mơ tìm nhau chờ một ngày yêu thương là lời nói cho nhau một câu
+yt_i724lraI93s__sent000015,34,1,1,33,0,0,1.0000,,từng ngày ta thôi còn trông ngóng trái tim thôi ngủ yên để từng đêm ta say triền miên để đêm nay ngừng trôi một mình anh nơi đây vẫn thao thức yêu lắm,hãy
+yt_i724lraI93s__sent000016,15,15,0,0,0,15,0.0000,,thương lắm mà xa lắm đau lắm ai buồn ai buồn em buồn vì ai,thương lắm mà xa lắm đau lắm ai buồn ai buồn em buồn vì ai
+yt_i724lraI93s__sent000017,18,1,1,17,0,0,1.0000,,yêu lắm thương lắm mà xa lắm chứ đau lắm ai chờ mong chờ em chờ đợi anh,hãy
+yt_i724lraI93s__sent000018,0,0,0,0,0,0,,no_ref,,
+yt_i724lraI93s__sent000019,25,1,1,24,0,0,1.0000,,na nắng trong mưa tìm nhau chờ một ngày yêu thương lả lơi nói cho nhau một câu để từng ngày ta thôi còn trông,hãy
+yt_i724lraI93s__sent000020,15,12,2,3,0,10,0.3333,,ngóng trái tim thôi ngủ yên để từng đêm ta say triền miên để đêm,trái tim thôi ngủ yên để từng đêm ta say chuyên nguyên
+yt_i724lraI93s__sent000021,11,11,1,0,0,10,0.0909,,một mình anh nơi đây vẫn thao thức yêu lắm thương,một mình anh đời đây vẫn thao thức yêu lắm thương
+yt_i724lraI93s__sent000022,26,1,1,25,0,0,1.0000,,xa lắm chứ đau lắm ai buồn ai buồn em buồn vì ai yêu lắm thương lắm mà xa lắm chứ đau lắm ai chờ mong,hãy
+yt_i724lraI93s__sent000023,6,6,1,0,0,5,0.1667,,mong chờ em chờ đợi anh,em chờ em chờ đợi anh
+yt_i724lraI93s__sent000024,0,2,0,0,2,0,,spurious,,nên là
+yt_i724lraI93s__sent000025,0,0,0,0,0,0,,no_ref,,
+yt_i724lraI93s__sent000026,0,4,0,0,4,0,,spurious,,nan nan nan nan
+yt_i724lraI93s__sent000027,0,0,0,0,0,0,,no_ref,,
+yt_i724lraI93s__sent000028,0,0,0,0,0,0,,no_ref,,
+yt_i724lraI93s__sent000029,1,0,0,1,0,0,1.0000,,na,
+yt_i724lraI93s__sent000030,29,1,1,28,0,0,1.0000,,cắt các bạn mới vừa được xem 1 sản phẩm mới nhất của anh trúc nhân và thảo nhi và các bạn biết sao không ờ một cái điều,hãy
+yt_i724lraI93s__sent000031,16,1,1,15,0,0,1.0000,,điều rất là bất ngờ mà đến bây giờ làm xong trúc nhân vẫn còn đang,hãy
+yt_i724lraI93s__sent000032,36,42,10,4,10,22,0.6667,,đang đang rất là và hả rất hoảng hốt không tin vào điều đó là tất cả đều được quay bằng một chiếc điện thoại và thảo nhi tin rằng tất cả mọi người sẽ ủng,đang rất là hoảng hốt và không tin được cái điều đó đó là toàn bộ hình ảnh trong cái mv này đều được quay bằng một chiếc điện thoại và thảo như rất mong rằng là các bạn sẽ ủng hộ
+yt_i724lraI93s__sent000033,26,1,1,25,0,0,1.0000,,hộ sản phẩm 4 chữ lắm cũng như các sản phẩm trong tương lai của hai anh em xin chào tạm biệt và hẹn gặp lại,hãy
+yt_i724lraI93s__sent000034,0,0,0,0,0,0,,no_ref,,
