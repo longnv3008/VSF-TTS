@@ -640,7 +640,6 @@ def parse_args() -> argparse.Namespace:
         "--audio-dir",
         type=Path,
         default=PROJECT_ROOT
-        / "external_repos"
         / "VSF-audio-pipeline"
         / "data"
         / "processed"
@@ -650,7 +649,6 @@ def parse_args() -> argparse.Namespace:
         "--vtt-dir",
         type=Path,
         default=PROJECT_ROOT
-        / "external_repos"
         / "VSF-audio-pipeline"
         / "data"
         / "raw"

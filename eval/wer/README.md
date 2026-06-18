@@ -17,7 +17,7 @@ ca nhạc test. Pure-Python (stdlib), **không cần cài gì**, chạy bằng P
 | `i724lraI93s` | asr | BỐN CHỮ LẮM - Trúc Nhân | 34 |
 
 Hypothesis (label) đọc từ cột `text` của manifest
-`external_repos/VSF-audio-pipeline/data/metadata/batch_001_segments.csv`.
+`VSF-audio-pipeline/data/metadata/batch_001_segments.csv`.
 
 ## Quy trình 3 bước
 

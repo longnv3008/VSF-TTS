@@ -190,8 +190,8 @@ CLI du kien:
 
 ```powershell
 python scripts\segment_youtube_audio_with_vad_transcript.py `
-  --audio-dir external_repos\VSF-audio-pipeline\data\processed\audio `
-  --vtt-dir external_repos\VSF-audio-pipeline\data\raw\youtube `
+  --audio-dir VSF-audio-pipeline\data\processed\audio `
+  --vtt-dir VSF-audio-pipeline\data\raw\youtube `
   --out-dir pipeline_runs\youtube_sentence_labels `
   --refine-boundaries `
   --overwrite

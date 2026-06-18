@@ -34,7 +34,7 @@ AI/agent đọc file này trước. Sau đó mở phase doc liên quan khi cần
 
 | Phase | Thư mục | Tài liệu | Mô tả ngắn |
 |---|---|---|---|
-| **0 — Crawl** | `external_repos/VSF-audio-pipeline/` | [phase-00-crawl.md](phase-00-crawl.md) | YouTube → raw audio qua VSF-audio-pipeline repo |
+| **0 — Crawl** | `VSF-audio-pipeline/` | [phase-00-crawl.md](phase-00-crawl.md) | YouTube → raw audio qua VSF-audio-pipeline repo |
 | **1 — Separate** | `.venv-demucs/`, `scripts/demucs_env.py` | [phase-01-separate.md](phase-01-separate.md) | Demucs vocal separation, venv setup, fallback logic |
 | **2 — Clean** | `scripts/end_to_end_pipeline.py` | [phase-02-clean.md](phase-02-clean.md) | ffmpeg → mono 16kHz 16-bit WAV |
 | **3 — VAD** | `VAD/` | [phase-03-vad.md](phase-03-vad.md) | Silero V6 ONNX, batch + Triton serving, params, bugs |

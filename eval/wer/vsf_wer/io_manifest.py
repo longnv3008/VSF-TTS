@@ -1,6 +1,6 @@
 """Đọc manifest segment + config video. Lọc 3 video target, sửa đường WAV.
 
-Manifest: external_repos/VSF-audio-pipeline/data/metadata/batch_001_segments.csv
+Manifest: VSF-audio-pipeline/data/metadata/batch_001_segments.csv
 Cột dùng: video_id, segment_id, segment_file, text, transcript_source, start, end, duration, title.
 Hypothesis = cột `text` (= nội dung file .txt label), không cần đọc 113 file lẻ.
 """
@@ -13,7 +13,7 @@ from pathlib import Path
 
 # vsf_wer/io_manifest.py -> wer -> eval -> TTS (repo root)
 REPO_ROOT = Path(__file__).resolve().parents[3]
-PIPELINE_DIR = REPO_ROOT / "external_repos" / "VSF-audio-pipeline"
+PIPELINE_DIR = REPO_ROOT / "VSF-audio-pipeline"
 MANIFEST = PIPELINE_DIR / "data" / "metadata" / "batch_001_segments.csv"
 
 WER_DIR = Path(__file__).resolve().parents[1]  # eval/wer

@@ -13,14 +13,9 @@ Script: `scripts/run_vsf_github_crawl.py` (crawl only, không chạy VAD)
 
 ## Repo crawler
 
-Dùng repo ngoài: `longnv3008/VSF-audio-pipeline` — clone vào `external_repos/VSF-audio-pipeline/` (gitignored).
+Crawler nằm trong repo: folder `VSF-audio-pipeline/` (trước là submodule, nay là folder thường trong dự án).
 
-```powershell
-# Clone lần đầu
-git clone https://github.com/longnv3008/VSF-audio-pipeline.git external_repos\VSF-audio-pipeline
-```
-
-Repo này cần setup riêng (FastAPI + Postgres). Script `run_vsf_github_crawl.py` bypass FastAPI, gọi trực tiếp vào backend service.
+Backend crawler cần setup env riêng (FastAPI + Postgres). Script `run_vsf_github_crawl.py` bypass FastAPI, gọi trực tiếp vào backend service. Setup env: `uv sync --project VSF-audio-pipeline/backend` (xem `setup_new_machine.ps1`).
 
 ## Cách chạy crawl + full pipeline
 
@@ -39,7 +34,7 @@ python scripts\run_vsf_github_to_labels.py `
 python scripts\run_vsf_github_to_labels.py `
   --urls-file urls.txt `
   --batch-name batch_001 `
-  --cookie-file external_repos\VSF-audio-pipeline\cookies\youtube.txt `
+  --cookie-file VSF-audio-pipeline\cookies\youtube.txt `
   --work-dir pipeline_runs\batch_001
 ```
 
@@ -61,7 +56,7 @@ Nếu audio đã download hoặc tự có:
 # Dùng --skip-crawl + chỉ đường dẫn tới WAV đã có
 python scripts\run_vsf_github_to_labels.py `
   --skip-crawl `
-  --processed-audio-dir external_repos\VSF-audio-pipeline\data\processed\audio `
+  --processed-audio-dir VSF-audio-pipeline\data\processed\audio `
   --work-dir pipeline_runs\existing_audio
 ```
 
@@ -76,7 +71,7 @@ python scripts\end_to_end_pipeline.py `
 
 | Triệu chứng | Nguyên nhân thường gặp | Chỗ fix |
 |---|---|---|
-| `ModuleNotFoundError` crawler | Chưa setup `external_repos/VSF-audio-pipeline` | Clone repo, setup env của nó |
+| `ModuleNotFoundError` crawler | Chưa setup `VSF-audio-pipeline` | `uv sync --project VSF-audio-pipeline/backend` |
 | Download fail / 403 | Video gated hoặc cookies hết hạn | Cập nhật `cookies/youtube.txt` |
 | `processed/audio/` rỗng | Crawler chạy nhưng không output | Xem logs trong `github_summary.json` |
 | Subtitle thiếu `.vtt` | Video không có auto-caption | Chạy với `--no-vtt`, dùng ASR fallback |

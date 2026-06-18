@@ -66,12 +66,12 @@ specific env. Vocal stems land in `<work-dir>/vocals/`.
 The GitHub repo `longnv3008/VSF-audio-pipeline.git` is wired in as a **git submodule** at:
 
 ```text
-external_repos/VSF-audio-pipeline
+VSF-audio-pipeline
 ```
 
 Fresh clones get it via `git clone --recursive`; otherwise run
 `git submodule update --init --recursive`. Its backend env is built with
-`uv sync --project external_repos/VSF-audio-pipeline/backend` (see `setup_new_machine.ps1`).
+`uv sync --project VSF-audio-pipeline/backend` (see `setup_new_machine.ps1`).
 
 Relevant docs/code read from that repo:
 
@@ -123,7 +123,7 @@ With a YouTube cookies file:
 python scripts\run_vsf_github_to_labels.py `
   --urls-file urls.txt `
   --batch-name batch_001 `
-  --cookie-file external_repos\VSF-audio-pipeline\cookies\youtube.txt `
+  --cookie-file VSF-audio-pipeline\cookies\youtube.txt `
   --work-dir pipeline_runs\vsf_github_batch_001 `
   --refine-boundaries
 ```
@@ -157,7 +157,7 @@ If the GitHub repo has already produced WAV files in its normal location, skip c
 ```powershell
 python scripts\run_vsf_github_to_labels.py `
   --skip-crawl `
-  --processed-audio-dir external_repos\VSF-audio-pipeline\data\processed\audio `
+  --processed-audio-dir VSF-audio-pipeline\data\processed\audio `
   --work-dir pipeline_runs\vsf_existing_audio `
   --refine-boundaries
 ```

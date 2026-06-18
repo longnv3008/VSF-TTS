@@ -3,7 +3,7 @@ Run the cloned VSF-audio-pipeline backend as a direct file-based crawler.
 
 This helper is meant to be executed through the cloned repo's backend env:
 
-  uv run --project external_repos/VSF-audio-pipeline/backend python scripts/run_vsf_github_crawl.py ...
+  uv run --project VSF-audio-pipeline/backend python scripts/run_vsf_github_crawl.py ...
 
 It avoids FastAPI/Postgres and calls AudioPipelineService directly:
   crawl_youtube -> normalize_audio -> segment_and_label -> build_segment_metadata

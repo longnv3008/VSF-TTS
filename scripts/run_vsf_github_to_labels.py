@@ -27,7 +27,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from demucs_env import demucs_available, resolve_demucs_cmd  # noqa: E402
 
-DEFAULT_REPO_DIR = PROJECT_ROOT / "external_repos" / "VSF-audio-pipeline"
+DEFAULT_REPO_DIR = PROJECT_ROOT / "VSF-audio-pipeline"
 
 
 def run_command(cmd: list[str], cwd: Path | None = None) -> None:

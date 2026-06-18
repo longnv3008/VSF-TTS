@@ -72,7 +72,7 @@ Token = âm tiết tách theo khoảng trắng (chuẩn WER tiếng Việt).
 
 Hypothesis (label text) đọc từ:
 ```
-external_repos/VSF-audio-pipeline/data/metadata/batch_001_segments.csv
+VSF-audio-pipeline/data/metadata/batch_001_segments.csv
 ```
 Cột `text` = transcript từ pipeline.
 

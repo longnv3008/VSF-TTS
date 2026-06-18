@@ -3,12 +3,12 @@
   Bootstrap the VSF-TTS E2E pipeline on a fresh Windows machine.
 
 .DESCRIPTION
-  Builds the isolated venvs, pulls the crawler submodule, and syncs the crawler
-  backend env. Idempotent: re-running skips venvs that already exist.
+  Builds the isolated venvs and syncs the crawler backend env. Idempotent:
+  re-running skips venvs that already exist.
 
   Steps:
     1. Check prereqs (Python 3.12, ffmpeg, git, uv).
-    2. git submodule update --init --recursive  (crawler: external_repos/VSF-audio-pipeline)
+    2. Sanity-check the in-repo crawler folder (VSF-audio-pipeline).
     3. .venv-vad        <- VAD/requirements.txt
     4. .venv-demucs     <- requirements-demucs.txt           (Demucs CPU)
     5. .venv-demucs-cu128 <- requirements-demucs-cu128.txt   (only with -Gpu; needs CUDA 12.8)
@@ -62,11 +62,10 @@ if (-not (Test-Cmd git)) { Die "git not found." }
 if (-not (Test-Cmd uv))  { Die "uv not found. Install: https://docs.astral.sh/uv/ (crawler backend uses uv)." }
 Info "git + uv OK"
 
-# 2. Submodule (crawler repo) ----------------------------------------------
-Info "Syncing crawler submodule (external_repos/VSF-audio-pipeline)..."
-git submodule update --init --recursive
-if (-not (Test-Path "external_repos/VSF-audio-pipeline/backend/pyproject.toml")) {
-    Die "Crawler submodule missing. Did you clone with --recursive? Run: git submodule update --init --recursive"
+# 2. Crawler folder (in-repo) ----------------------------------------------
+Info "Checking in-repo crawler folder (VSF-audio-pipeline)..."
+if (-not (Test-Path "VSF-audio-pipeline/backend/pyproject.toml")) {
+    Die "VSF-audio-pipeline/backend missing. Repo clone incomplete?"
 }
 
 # 3-5. venvs ----------------------------------------------------------------
@@ -94,12 +93,12 @@ if ($Gpu) {
 
 # 6. Crawler backend env ----------------------------------------------------
 Info "Syncing crawler backend env (uv)..."
-uv sync --project external_repos/VSF-audio-pipeline/backend
+uv sync --project VSF-audio-pipeline/backend
 
 # 7. Manual secrets reminder ------------------------------------------------
 Warn "Manual steps (NOT in git):"
-Warn "  - Copy external_repos/VSF-audio-pipeline/.env.example -> .env and fill secrets."
-Warn "  - Place YouTube cookies at external_repos/VSF-audio-pipeline/cookies/youtube.txt (for crawl)."
+Warn "  - Copy VSF-audio-pipeline/.env.example -> .env and fill secrets."
+Warn "  - Place YouTube cookies at VSF-audio-pipeline/cookies/youtube.txt (for crawl)."
 
 # 8. Smoke test -------------------------------------------------------------
 if ($Smoke) {

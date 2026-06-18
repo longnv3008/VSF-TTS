@@ -57,7 +57,7 @@ flowchart TD
 
 | Phase | Thư mục | README | Mô tả |
 |---|---|---|---|
-| **0 — Crawl** | `external_repos/VSF-audio-pipeline/` | [docs/phase-00-crawl.md](docs/phase-00-crawl.md) | YouTube → raw audio |
+| **0 — Crawl** | `VSF-audio-pipeline/` | [docs/phase-00-crawl.md](docs/phase-00-crawl.md) | YouTube → raw audio |
 | **1 — Separate** | `.venv-demucs/`, `scripts/demucs_env.py` | [docs/phase-01-separate.md](docs/phase-01-separate.md) | Demucs vocal separation |
 | **2 — Clean** | `scripts/end_to_end_pipeline.py` | [docs/phase-02-clean.md](docs/phase-02-clean.md) | ffmpeg → mono 16kHz 16-bit |
 | **3 — VAD** | `VAD/` | [VAD/README.md](VAD/README.md) · [docs/phase-03-vad.md](docs/phase-03-vad.md) | Silero V6 ONNX segmentation |
@@ -66,7 +66,7 @@ flowchart TD
 | **6 — Eval** | `eval/wer/` | [eval/wer/README.md](eval/wer/README.md) · [docs/phase-06-eval.md](docs/phase-06-eval.md) | WER/CER quality check |
 
 Not tracked (see [.gitignore](.gitignore)): virtualenvs, `pipeline_runs/` output,
-datasets (`finetune/data*`), logs. The crawler at `external_repos/VSF-audio-pipeline`
+datasets (`finetune/data*`), logs. The crawler at `VSF-audio-pipeline`
 is a **git submodule** (pinned commit, fetched on clone). Small model artifacts
 (`*.onnx`, `*.pth`) **are** committed so the pipeline runs after clone.
 
@@ -96,7 +96,7 @@ cd TTS
 
 Already cloned without `--recursive`? Run `git submodule update --init --recursive`.
 Manual (not in git): the crawler's `.env` (from its `.env.example`) and
-`external_repos/VSF-audio-pipeline/cookies/youtube.txt` for crawling.
+`VSF-audio-pipeline/cookies/youtube.txt` for crawling.
 
 ## Environments
 
