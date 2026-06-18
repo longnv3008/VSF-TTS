@@ -2,6 +2,7 @@ from app.modules.audio_pipeline.application.segmentation.text_quality import (
     clean_transcript,
     collapse_repetition,
     has_excessive_repetition,
+    has_promo_marker,
     is_blocklisted,
     normalize_vlsp,
 )
@@ -22,6 +23,23 @@ def test_blocklist_does_not_match_real_text_or_substring():
     # cụm ảo giác là substring nhưng câu thật dài hơn -> không drop
     assert not is_blocklisted("tôi muốn cảm ơn các bạn đã theo dõi chương trình")
     assert not is_blocklisted("")
+
+
+# --------------------------------------------------------------------------- #
+# has_promo_marker (substring promo kênh — đặc trưng, drop cả khi có chữ thừa)
+# --------------------------------------------------------------------------- #
+def test_promo_marker_catches_channel_promo_with_trailing_words():
+    # hallucination THẬT của i724: exact-match blocklist bỏ lọt vì có đuôi thừa
+    assert has_promo_marker(
+        "Hãy subscribe cho kênh Ghiền Mì Gõ Để không bỏ lỡ những video hấp dẫn"
+    )
+    assert has_promo_marker("nhớ đăng ký kênh của mình nha mọi người")
+
+
+def test_promo_marker_keeps_real_sentence_mentioning_channel_or_video():
+    # câu thật chỉ nhắc "kênh"/"video" nhưng KHÔNG chứa cụm promo -> giữ
+    assert not has_promo_marker("tôi thích xem video này trên kênh truyền hình quốc gia")
+    assert not has_promo_marker("")
 
 
 # --------------------------------------------------------------------------- #
@@ -84,6 +102,18 @@ def test_clean_transcript_rejects_on_no_speech_and_low_logprob():
 def test_clean_transcript_drops_blocklisted():
     assert clean_transcript("Thank you for watching!") == ""
     assert clean_transcript("Hãy đăng ký kênh") == ""
+
+
+def test_clean_transcript_drops_promo_with_trailing_words():
+    # text-layer phải diệt hallucination promo dù KHÔNG có prob (reject-by-prob có thể không kích)
+    assert clean_transcript(
+        "Hãy subscribe cho kênh Ghiền Mì Gõ Để không bỏ lỡ những video hấp dẫn"
+    ) == ""
+
+
+def test_clean_transcript_keeps_real_sentence_mentioning_channel():
+    s = "tôi thích xem video này trên kênh truyền hình quốc gia"
+    assert clean_transcript(s) == s
 
 
 def test_clean_transcript_drops_excessive_repetition():

@@ -54,6 +54,12 @@ BLOCKLIST_VTT = """WEBVTT
 Hãy đăng ký kênh
 """
 
+PROMO_VTT = """WEBVTT
+
+00:00:00.000 --> 00:00:01.000
+Hãy subscribe cho kênh Ghiền Mì Gõ Để không bỏ lỡ những video hấp dẫn
+"""
+
 ACRONYM_VTT = """WEBVTT
 
 00:00:00.000 --> 00:00:01.000
@@ -73,6 +79,22 @@ def test_vtt_blocklisted_caption_dropped(make_wav, tmp_path):
     )
     assert len(rows) == 1
     assert rows[0]["transcript_source"] == "vtt"
+    assert rows[0]["text"] == ""
+    assert rows[0]["transcript_status"] == "missing"
+
+
+def test_vtt_promo_caption_with_trailing_words_dropped(make_wav, tmp_path):
+    # promo có chữ thừa quanh cụm -> exact-match cũ bỏ lọt, substring promo phải diệt
+    wav = make_wav(seconds=2.0, name="yt_vid.wav")
+    vtt = tmp_path / "vid__t.vi.vtt"
+    vtt.write_text(PROMO_VTT, encoding="utf-8")
+    row = {"audio_id": "yt_vid", "video_id": "vid", "title": "t",
+           "source_url": "u", "audio_file_path": str(wav), "subtitle_file_path": str(vtt)}
+    rows = segment_video(
+        row, vad_client=_FakeVad([SpeechRegion(0.0, 1.0)], 2.0), asr_adapter=_FakeAsr(),
+        config=_cfg(), segments_root=tmp_path / "segments", batch_name="b1",
+    )
+    assert len(rows) == 1
     assert rows[0]["text"] == ""
     assert rows[0]["transcript_status"] == "missing"
 

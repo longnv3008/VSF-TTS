@@ -42,6 +42,20 @@ _BLOCKLIST_PHRASES = (
     "like and subscribe",
 )
 
+# Cụm promo kênh đủ ĐẶC TRƯNG để khớp SUBSTRING an toàn (gần như không có trong lời hát/nói
+# thật). Khác _BLOCKLIST_PHRASES (khớp exact): các cụm này drop CẢ KHI có chữ thừa quanh nó —
+# bắt hallucination kiểu "Hãy subscribe cho kênh Ghiền Mì Gõ Để không bỏ lỡ những video hấp dẫn"
+# mà exact-match bỏ lọt. Lower-case canonical (chuẩn hóa khi so khớp).
+_PROMO_SUBSTRINGS = (
+    "đăng ký kênh",
+    "subscribe cho kênh",
+    "ghiền mì gõ",
+    "la la school",
+    "bỏ lỡ những video",
+    "nhấn chuông",
+    "like và đăng ký",
+)
+
 # Acronym đánh vần -> viết liền (VLSP). Lower-case canonical.
 _ACRONYMS = ("nato", "fifa", "asean", "wto", "fbi", "atm", "usb", "gdp", "wifi")
 
@@ -77,6 +91,7 @@ def _norm_compare(text: str) -> str:
 
 
 _BLOCKLIST_NORM = frozenset(_norm_compare(p) for p in _BLOCKLIST_PHRASES)
+_PROMO_NORM = tuple(_norm_compare(p) for p in _PROMO_SUBSTRINGS)
 
 
 def is_blocklisted(text: str) -> bool:
@@ -87,6 +102,18 @@ def is_blocklisted(text: str) -> bool:
     if not text:
         return False
     return _norm_compare(text) in _BLOCKLIST_NORM
+
+
+def has_promo_marker(text: str) -> bool:
+    """True nếu text CHỨA (substring) một cụm promo kênh đặc trưng (`_PROMO_SUBSTRINGS`).
+
+    Khác `is_blocklisted` (exact): bắt hallucination promo có chữ thừa quanh cụm. Các cụm
+    này đủ đặc trưng để khớp substring không giết câu thật (vd "đăng ký kênh", "ghiền mì gõ").
+    """
+    if not text:
+        return False
+    norm = _norm_compare(text)
+    return any(p in norm for p in _PROMO_NORM)
 
 
 def collapse_repetition(text: str, max_repeat: int = 6) -> str:
@@ -164,7 +191,7 @@ def clean_transcript(
         and avg_logprob < logprob_min
     ):
         return ""
-    if is_blocklisted(text):
+    if is_blocklisted(text) or has_promo_marker(text):
         return ""
     if has_excessive_repetition(text, limit=repetition_limit):
         return ""

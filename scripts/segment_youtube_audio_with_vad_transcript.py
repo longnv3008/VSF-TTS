@@ -43,7 +43,7 @@ TEXT_QUALITY_DIR = (
 sys.path.insert(0, str(TEXT_QUALITY_DIR))
 
 from batch_vad import MODEL_DIR, VADModel, run_vad_file  # noqa: E402
-from text_quality import is_blocklisted, normalize_vlsp  # noqa: E402
+from text_quality import has_promo_marker, is_blocklisted, normalize_vlsp  # noqa: E402
 
 
 TIMESTAMP_RE = re.compile(
@@ -580,8 +580,8 @@ def process_item(
         start = float(spec["start"])
         end = float(spec["end"])
         text = str(spec["text"])
-        # Loại caption ảo giác phổ biến + chuẩn hóa VLSP (giữ dấu thanh/dấu câu).
-        text = "" if is_blocklisted(text) else normalize_vlsp(text)
+        # Loại caption ảo giác phổ biến (exact + promo substring) + chuẩn hóa VLSP.
+        text = "" if (is_blocklisted(text) or has_promo_marker(text)) else normalize_vlsp(text)
         transcript_status = spec["transcript_status"]
         if transcript_status == "ready" and not text:
             transcript_status = "missing"
