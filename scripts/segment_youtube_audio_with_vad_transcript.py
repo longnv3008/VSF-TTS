@@ -29,7 +29,21 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 VAD_DIR = PROJECT_ROOT / "VAD"
 sys.path.insert(0, str(VAD_DIR))
 
+# Module dùng chung với app backend (pure stdlib, import file trực tiếp tránh kéo app.*).
+TEXT_QUALITY_DIR = (
+    PROJECT_ROOT
+    / "VSF-audio-pipeline"
+    / "backend"
+    / "app"
+    / "modules"
+    / "audio_pipeline"
+    / "application"
+    / "segmentation"
+)
+sys.path.insert(0, str(TEXT_QUALITY_DIR))
+
 from batch_vad import MODEL_DIR, VADModel, run_vad_file  # noqa: E402
+from text_quality import is_blocklisted, normalize_vlsp  # noqa: E402
 
 
 TIMESTAMP_RE = re.compile(
@@ -566,6 +580,11 @@ def process_item(
         start = float(spec["start"])
         end = float(spec["end"])
         text = str(spec["text"])
+        # Loại caption ảo giác phổ biến + chuẩn hóa VLSP (giữ dấu thanh/dấu câu).
+        text = "" if is_blocklisted(text) else normalize_vlsp(text)
+        transcript_status = spec["transcript_status"]
+        if transcript_status == "ready" and not text:
+            transcript_status = "missing"
 
         cut_wav_segment(wav_path, segment_file, start, end)
         write_text(transcript_file, text)
@@ -581,7 +600,7 @@ def process_item(
                 "end": f"{end:.3f}",
                 "duration": f"{end - start:.3f}",
                 "text": text,
-                "transcript_status": spec["transcript_status"],
+                "transcript_status": transcript_status,
                 "vad_status": spec["vad_status"],
                 "source_wav": manifest_path(wav_path),
                 "source_vtt": manifest_path(vtt_path),
