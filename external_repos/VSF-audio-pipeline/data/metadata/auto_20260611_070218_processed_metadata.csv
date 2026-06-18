@@ -1,0 +1,3 @@
+audio_id,video_id,title,source,source_url,audio_file_path,translation_file_path,translation_status,duration_sec,sample_rate,channels,format
+yt_Wlxjv8fW6x0,Wlxjv8fW6x0,Dạy O người Đức nói giọng Quảng Bình P2 | Relax - Sushi Party tuyệt vời bên gia đình,youtube,https://www.youtube.com/watch?v=Wlxjv8fW6x0,/data/processed/audio/yt_Wlxjv8fW6x0.wav,data/processed/translations/yt_Wlxjv8fW6x0.txt,missing,255.478,16000,1,wav
+yt__lF-zhsNodg,_lF-zhsNodg,Ngớ người với Giọng Nói như Hát tại chợ Sông Cầu Phú Yên | TÌM HIỂU TIẾNG ĐỊA PHƯƠNG,youtube,https://www.youtube.com/watch?v=_lF-zhsNodg,/data/processed/audio/yt__lF-zhsNodg.wav,data/processed/translations/yt__lF-zhsNodg.txt,ready,935.404,16000,1,wav

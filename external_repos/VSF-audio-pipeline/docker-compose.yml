@@ -1,0 +1,117 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: audio-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-audio_pipeline}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-audio_pipeline}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: audio-backend
+    env_file:
+      - .env
+    environment:
+      APP_NAME: VinSmart Audio Pipeline
+      APP_ENV: docker
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-audio_pipeline}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-audio_pipeline}
+      STORAGE_ROOT: /data
+      RAW_YOUTUBE_DIR: /data/raw/youtube
+      PROCESSED_AUDIO_DIR: /data/processed/audio
+      METADATA_DIR: /data/metadata
+      # Không set thì rơi về default tương đối -> ghi vào /app (không mount), mất output.
+      SEGMENTS_DIR: /data/processed/segments
+      PROCESSED_TRANSLATION_DIR: /data/processed/translations
+      LABELING_UPLOAD_DIR: /data/labeling/upload
+      LOG_DIR: /app/logs
+      YT_DLP_COOKIE_FILE: ${YT_DLP_COOKIE_FILE:-}
+      YT_DLP_COOKIE_BACKUP_FILE: ${YT_DLP_COOKIE_BACKUP_FILE:-}
+      YT_DLP_PROXY_BACKUPS: ${YT_DLP_PROXY_BACKUPS:-}
+      DISCOVERY_TOPIC_FILE: /app/topic.txt
+      LANGSMITH_TRACING: ${LANGSMITH_TRACING:-false}
+      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY:-}
+      LANGSMITH_PROJECT: ${LANGSMITH_PROJECT:-audio-pipeline}
+      LANGCHAIN_API_KEY: ${LANGCHAIN_API_KEY:-}
+      # Trong mạng docker, backend gọi VAD Triton qua tên service thay vì 127.0.0.1.
+      VAD_GRPC_URL: vad-server:8001
+      # Demucs always-ON trên GPU (torch cu128 cài sẵn trong image).
+      DEMUCS_ENABLED: "true"
+      DEMUCS_DEVICE: ${DEMUCS_DEVICE:-cuda}
+      DEMUCS_MODEL: ${DEMUCS_MODEL:-htdemucs}
+    ports:
+      - "${BACKEND_PORT:-8001}:8000"
+    volumes:
+      - ./backend:/app/backend
+      - ./data:/data
+      - ./logs:/app/logs
+      - ./cookies:/app/cookies
+      - ./topic.txt:/app/topic.txt
+    # Cấp GPU NVIDIA cho Demucs (và ASR nếu dùng cuda).
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      vad-server:
+        condition: service_started
+
+  vad-server:
+    # Triton VAD server. Build context = repo cha ../../VAD (Dockerfile COPY models/ + requirements.txt).
+    # compose tự build nếu image vad-server:latest chưa có; tag lại tên đó để service khác tham chiếu.
+    # Model chạy CPU-only (config.pbtxt: device=cpu, KIND_CPU) nên không cần GPU.
+    build:
+      context: ../../VAD
+      dockerfile: Dockerfile
+    image: vad-server:latest
+    container_name: vad-server
+    environment:
+      TF_CPP_MIN_LOG_LEVEL: "1"
+      DEBUG: "true"
+    shm_size: "4096m"
+    ports:
+      # Expose gRPC ra host:8011 để có thể test bằng VAD/client.py nếu cần.
+      - "8011:8001"
+    volumes:
+      - ../../VAD/logs:/logs
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: audio-frontend
+    environment:
+      VITE_API_BASE_URL: http://localhost:${BACKEND_PORT:-8001}/api/v1
+    ports:
+      - "${FRONTEND_PORT:-5174}:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

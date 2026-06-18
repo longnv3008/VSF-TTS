@@ -1,0 +1,4 @@
+audio_id,video_id,title,source,source_url,audio_file_path,translation_file_path,translation_status,duration_sec,sample_rate,channels,format
+yt_eTa39o0Pza4,eTa39o0Pza4,NGHỆ CYPHER / 37 SOUND / 7dnight x $.E x Daystrado x Dfoxie37 x Polux x S.O.N [Official MV],youtube,https://www.youtube.com/watch?v=eTa39o0Pza4,/data/processed/audio/yt_eTa39o0Pza4.wav,data/processed/translations/yt_eTa39o0Pza4.txt,ready,340.068,16000,1,wav
+yt_0Yz2_x0uQBY,0Yz2_x0uQBY,Hẹn Lần Sau | Maydays (Live In Bloom Tour Đà Nẵng - On The Radio),youtube,https://www.youtube.com/watch?v=0Yz2_x0uQBY,/data/processed/audio/yt_0Yz2_x0uQBY.wav,data/processed/translations/yt_0Yz2_x0uQBY.txt,ready,130.432,16000,1,wav
+yt_nzi9QXKLruo,nzi9QXKLruo,Kể chuyện lịch sử I Huyền sử công chúa Huyền Trân I Giọng Huế I Ký ức Huế,youtube,https://www.youtube.com/watch?v=nzi9QXKLruo,/data/processed/audio/yt_nzi9QXKLruo.wav,data/processed/translations/yt_nzi9QXKLruo.txt,ready,613.692,16000,1,wav

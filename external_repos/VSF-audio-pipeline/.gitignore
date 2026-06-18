@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.env
+.pytest_cache/
+.mypy_cache/
+
+# Data
+data/raw/
+data/processed/
+data/labeling/upload/
+data/final/
+cookies/*
+!cookies/.gitkeep
+*.wav
+*.mp3
+*.mp4
+*.m4a
+*.webm
+*.flac
+
+# Logs
+logs/
+*.log
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# OS / Editor
+.DS_Store
+.vscode/
+.idea/
+
+# Brainstorming mockups (visual companion)
+.superpowers/

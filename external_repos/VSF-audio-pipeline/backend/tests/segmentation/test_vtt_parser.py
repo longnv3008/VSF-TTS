@@ -1,0 +1,29 @@
+from pathlib import Path
+
+from app.modules.audio_pipeline.application.segmentation.vtt_parser import parse_youtube_vtt
+
+VTT = """WEBVTT
+Kind: captions
+Language: vi
+
+00:00:01.000 --> 00:00:03.000
+<00:00:01.000><c> xin</c><00:00:01.500><c> chao</c>
+
+00:00:01.000 --> 00:00:03.000
+xin chao
+
+00:00:03.200 --> 00:00:05.000
+cac ban.
+"""
+
+
+def test_parse_dedup_and_clean(tmp_path: Path):
+    p = tmp_path / "vid__title.vi.vtt"
+    p.write_text(VTT, encoding="utf-8")
+    cues = parse_youtube_vtt(p)
+    texts = [c.text for c in cues]
+    assert "xin chao" in texts[0]
+    assert any("cac ban" in t for t in texts)
+    # Không lặp lại cue "xin chao" hai lần liên tiếp.
+    assert texts.count("xin chao") == 1
+    assert cues[0].start == 1.0 and cues[0].end == 3.0

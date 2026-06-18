@@ -1,0 +1,77 @@
+project:
+  name: VinSmart Future Audio Pipeline
+  last_updated: 2026-05-29
+  repo_type: monorepo-fullstack
+  goal:
+    - ingest-youtube-urls
+    - process-audio
+    - build-full-video-translations
+    - generate-metadata
+    - monitor-jobs-on-dashboard
+
+stack:
+  frontend:
+    - React 18
+    - Vite
+    - TypeScript
+    - Ant Design
+  backend:
+    - FastAPI
+    - SQLAlchemy
+    - Alembic
+  workflow:
+    - LangGraph
+  database:
+    - PostgreSQL
+  runtime_tools:
+    - yt-dlp
+    - ffmpeg
+    - soundfile
+  observability:
+    - LangSmith
+
+workflow:
+  steps:
+    - validate_urls
+    - crawl_audio
+    - normalize_audio
+    - build_translations
+    - build_metadata
+
+paths:
+  backend: backend/
+  frontend: frontend/
+  docs: docs/
+  runtime_data:
+    raw_youtube: data/raw/youtube
+    processed_audio: data/processed/audio
+    processed_translations: data/processed/translations
+    metadata: data/metadata
+    logs: logs/
+
+api:
+  endpoints:
+    - GET /api/v1/health
+    - GET /api/v1/jobs
+    - GET /api/v1/jobs/events
+    - GET /api/v1/jobs/{job_id}
+    - POST /api/v1/jobs/ingest
+    - POST /api/v1/jobs/{job_id}/retry
+
+entrypoints:
+  backend:
+    - backend/app/main.py
+    - backend/app/modules/audio_pipeline/api/routes.py
+    - backend/app/modules/audio_pipeline/application/workflow.py
+    - backend/app/modules/audio_pipeline/application/pipeline_service.py
+  frontend:
+    - frontend/src/pages/dashboard/DashboardPage.tsx
+    - frontend/src/features/jobs/api/jobs.ts
+
+docs_reading_order:
+  - docs/README.md
+  - docs/ai-context/project-memory.md
+  - docs/ai-context/project-memory.yaml
+  - docs/ai-context/repo-map.md
+  - docs/ai-context/work-rules.md
+  - docs/phases/
