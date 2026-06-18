@@ -82,6 +82,10 @@ class Settings(BaseSettings):
     segment_merge_gap_sec: float = Field(default=0.5, alias="SEGMENT_MERGE_GAP_SEC")
     asr_model: str = Field(default="large-v3", alias="ASR_MODEL")
     asr_device: str = Field(default="cuda", alias="ASR_DEVICE")
+    # ASR hardening chống ảo giác khoảng lặng (xem FasterWhisperAdapter / text_quality).
+    asr_no_speech_threshold: float = Field(default=0.6, alias="ASR_NO_SPEECH_THRESHOLD")
+    asr_logprob_min: float = Field(default=-1.0, alias="ASR_LOGPROB_MIN")
+    asr_vad_filter: bool = Field(default=True, alias="ASR_VAD_FILTER")
 
     # Tách vocal bằng Demucs trước normalize (chạy trên raw, giữ chất lượng tách).
     # Tắt mặc định -> pipeline giữ nguyên hành vi cũ. Command trỏ env riêng có torch.

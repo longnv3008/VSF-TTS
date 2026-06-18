@@ -1479,7 +1479,13 @@ class AudioPipelineService:
         # Tách riêng để test có thể inject fake VAD/ASR.
         config = self._build_segmentation_config()
         vad_client = TritonVadClient(url=settings.vad_grpc_url, config=config)
-        asr_adapter = FasterWhisperAdapter(model_name=settings.asr_model, device=settings.asr_device)
+        asr_adapter = FasterWhisperAdapter(
+            model_name=settings.asr_model,
+            device=settings.asr_device,
+            no_speech_threshold=settings.asr_no_speech_threshold,
+            logprob_min=settings.asr_logprob_min,
+            vad_filter=settings.asr_vad_filter,
+        )
         return vad_client, asr_adapter
 
     def segment_and_label(
