@@ -1,4 +1,9 @@
-# eval/wer — Bộ test Manual WER cho label output
+# eval/wer — Phase 6: WER Evaluation
+
+> **Pipeline role:** Phase 6 (offline, optional) — đo chất lượng transcript từ pipeline output.
+> **Deep context:** [`docs/phase-06-eval.md`](../../docs/phase-06-eval.md)
+
+## Bộ test Manual WER cho label output
 
 Đo **chất lượng label text** (WER/CER) của pipeline E2E so với **lyric gốc**, cho 3 video
 ca nhạc test. Pure-Python (stdlib), **không cần cài gì**, chạy bằng Python hệ thống (3.12).

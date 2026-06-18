@@ -1,3 +1,8 @@
+# VAD — Phase 3: Voice Activity Detection
+
+> **Pipeline role:** Phase 3 — nhận `clean_wav/*.wav` (mono 16kHz) → detect speech regions → output cho Phase 4 (label/export).
+> **Deep context:** [`docs/phase-03-vad.md`](../docs/phase-03-vad.md)
+
 VAD for detecting speech, segmenting audio and endpointing
 
 ### Triton API

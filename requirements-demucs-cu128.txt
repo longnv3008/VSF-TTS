@@ -1,0 +1,22 @@
+# Demucs GPU env (CUDA 12.8) -> .venv-demucs-cu128
+#
+# Separate from the CPU env (requirements-demucs.txt, torch 2.2.2). Use this on a
+# machine with an NVIDIA GPU + CUDA 12.8 driver for fast Demucs on large batches.
+#
+#   python -m venv .venv-demucs-cu128
+#   .venv-demucs-cu128\Scripts\pip install -r requirements-demucs-cu128.txt
+#   python scripts/end_to_end_pipeline.py --raw-dir tmp --demucs \
+#     --demucs-cmd ".venv-demucs-cu128/Scripts/python -m demucs" --demucs-device cuda
+#
+# Pin notes (do not "upgrade"):
+#  - torch/torchaudio 2.8.0+cu128: matched pair from the cu128 wheel index.
+#  - torchaudio stays 2.8 (>= 2.9 routes save() through torchcodec -> extra native
+#    NPP/FFmpeg libs that break Demucs out of the box).
+#  - torch 2.8 ABI is fine with NumPy 2.x (unlike the CPU env's torch 2.2.x, which
+#    needs numpy<2). 2.4.6 is the verified version here.
+--extra-index-url https://download.pytorch.org/whl/cu128
+torch==2.8.0+cu128
+torchaudio==2.8.0+cu128
+numpy==2.4.6
+soundfile>=0.12
+demucs==4.0.1

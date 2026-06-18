@@ -1,0 +1,4 @@
+[submodule "external_repos/VSF-audio-pipeline"]
+	path = external_repos/VSF-audio-pipeline
+	url = https://github.com/longnv3008/VSF-audio-pipeline.git
+	branch = feat/segment-level-pipeline

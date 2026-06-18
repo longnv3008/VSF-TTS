@@ -6,8 +6,8 @@
 venv/
 
 # === Nested repo / generated output / datasets / logs ===
-# external_repos: separate git repo, 7.6GB
-external_repos/
+# external_repos/VSF-audio-pipeline is a git submodule (tracked pointer); its bulky
+# content (venvs/data/logs) is ignored by that repo's own .gitignore.
 # pipeline_runs: generated per-run output, 2.9GB
 pipeline_runs/
 # VAD/logs: trace.json.* , 713MB

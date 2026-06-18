@@ -53,21 +53,50 @@ flowchart TD
 `scripts/run_vsf_github_to_labels.py` = full crawl mode.
 `scripts/end_to_end_pipeline.py` = local audio mode.
 
-## Repo layout
+## Repo layout — Pipeline phases
 
-```text
-scripts/        end-to-end pipeline wrappers (entry points)
-VAD/            Silero VAD model + batch segmentation + Triton serving (Dockerfile)
-finetune/       finetune Silero VAD on Vietnamese data (energy-aware)
-eval/wer/       WER evaluation tooling
-docs/           design specs + plans
-PIPELINE.md     full pipeline reference
-CLAUDE.md       project + style instructions
+| Phase | Thư mục | README | Mô tả |
+|---|---|---|---|
+| **0 — Crawl** | `external_repos/VSF-audio-pipeline/` | [docs/phase-00-crawl.md](docs/phase-00-crawl.md) | YouTube → raw audio |
+| **1 — Separate** | `.venv-demucs/`, `scripts/demucs_env.py` | [docs/phase-01-separate.md](docs/phase-01-separate.md) | Demucs vocal separation |
+| **2 — Clean** | `scripts/end_to_end_pipeline.py` | [docs/phase-02-clean.md](docs/phase-02-clean.md) | ffmpeg → mono 16kHz 16-bit |
+| **3 — VAD** | `VAD/` | [VAD/README.md](VAD/README.md) · [docs/phase-03-vad.md](docs/phase-03-vad.md) | Silero V6 ONNX segmentation |
+| **4 — Label** | `scripts/` | [scripts/README.md](scripts/README.md) · [docs/phase-04-label.md](docs/phase-04-label.md) | Cut WAV + manifest |
+| **5 — Finetune** | `finetune/` | [finetune/README.md](finetune/README.md) · [docs/phase-05-finetune.md](docs/phase-05-finetune.md) | Retrain VAD model |
+| **6 — Eval** | `eval/wer/` | [eval/wer/README.md](eval/wer/README.md) · [docs/phase-06-eval.md](docs/phase-06-eval.md) | WER/CER quality check |
+
+Not tracked (see [.gitignore](.gitignore)): virtualenvs, `pipeline_runs/` output,
+datasets (`finetune/data*`), logs. The crawler at `external_repos/VSF-audio-pipeline`
+is a **git submodule** (pinned commit, fetched on clone). Small model artifacts
+(`*.onnx`, `*.pth`) **are** committed so the pipeline runs after clone.
+
+## Khi có vấn đề → tìm ở đâu
+
+| Triệu chứng | Phase | Nơi debug |
+|---|---|---|
+| Download fail / 403 | Phase 0 | [docs/phase-00-crawl.md](docs/phase-00-crawl.md) |
+| Demucs crash / not found | Phase 1 | [docs/phase-01-separate.md](docs/phase-01-separate.md) |
+| ffmpeg error / wrong format | Phase 2 | [docs/phase-02-clean.md](docs/phase-02-clean.md) |
+| 0 segments / quá nhiều segments | Phase 3 | [docs/phase-03-vad.md](docs/phase-03-vad.md) |
+| Segment bị cắt sai / manifest thiếu | Phase 4 | [docs/phase-04-label.md](docs/phase-04-label.md) |
+| Finetune không hội tụ / OOM | Phase 5 | [docs/phase-05-finetune.md](docs/phase-05-finetune.md) |
+| WER cao / transcript rác | Phase 6 | [docs/phase-06-eval.md](docs/phase-06-eval.md) |
+
+## Setup on a new machine
+
+Prereqs: **Python 3.12**, **ffmpeg** in PATH, **git**, **uv**.
+
+```powershell
+git clone --recursive <this-repo-url> TTS    # --recursive pulls the crawler submodule
+cd TTS
+.\setup_new_machine.ps1            # builds CPU venvs + crawler backend env
+.\setup_new_machine.ps1 -Gpu       # also build .venv-demucs-cu128 (needs CUDA 12.8)
+.\setup_new_machine.ps1 -Smoke     # run the offline smoke test after setup
 ```
 
-Not tracked (see [.gitignore](.gitignore)): virtualenvs, `external_repos/` (separate
-git repo), `pipeline_runs/` output, datasets (`finetune/data*`), logs. Small model
-artifacts (`*.onnx`, `*.pth`) **are** committed so the pipeline runs after clone.
+Already cloned without `--recursive`? Run `git submodule update --init --recursive`.
+Manual (not in git): the crawler's `.env` (from its `.env.example`) and
+`external_repos/VSF-audio-pipeline/cookies/youtube.txt` for crawling.
 
 ## Environments
 
@@ -77,7 +106,7 @@ Three isolated venvs (heavy deps kept apart):
 |------|---------|---------|
 | `.venv-vad` | VAD + pipeline (no torch) | `pip install -r VAD/requirements.txt` |
 | `.venv-demucs` | Demucs CPU (torch 2.2.2 pinned) | `pip install -r requirements-demucs.txt` |
-| `.venv-demucs-cu128` | Demucs GPU (torch 2.8, CUDA 12.8) | torch cu128 wheel + `demucs>=4.0` |
+| `.venv-demucs-cu128` | Demucs GPU (torch 2.8, CUDA 12.8) | `pip install -r requirements-demucs-cu128.txt` |
 
 > Torch pins matter: torchaudio ≥ 2.9 routes through torchcodec and breaks Demucs;
 > NumPy 2.x breaks torch 2.2.x. Keep `numpy<2`, `torch==2.2.2` for the CPU env.
@@ -139,3 +168,4 @@ Tune with `--threshold`, `--min-volume`, `--refine-boundaries`.
 
 - [PIPELINE.md](PIPELINE.md) — full end-to-end reference
 - [VAD/README.md](VAD/README.md) — VAD model + serving
+- [docs/](docs/README.md) — project plans, reviews, finetune history (AI context)

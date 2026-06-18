@@ -1,4 +1,9 @@
-# Finetune Pipeline — Silero VAD v6 on Vietnamese TTS Data
+# Finetune — Phase 5: Finetune Silero VAD
+
+> **Pipeline role:** Phase 5 (offline, optional) — finetune model ONNX trên data TTS Việt → deploy vào `VAD/models/vad/1/vad.onnx`.
+> **Deep context:** [`docs/phase-05-finetune.md`](../docs/phase-05-finetune.md)
+> **Trạng thái:** Chưa deploy — smoke model chưa đạt gate (Detection@0.7 chưa cải thiện so baseline).
+
 
 ## Mô tả
 
