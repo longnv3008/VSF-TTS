@@ -15,6 +15,7 @@ from app.modules.audio_pipeline.application.segmentation.segment_writer import (
     write_text,
 )
 from app.modules.audio_pipeline.application.segmentation.sentence_grouper import cues_to_sentence_units
+from app.modules.audio_pipeline.application.segmentation.text_quality import is_blocklisted, normalize_vlsp
 from app.modules.audio_pipeline.application.segmentation.types import AlignedSegment, SegmentationConfig
 from app.modules.audio_pipeline.application.segmentation.vtt_parser import parse_youtube_vtt
 
@@ -98,9 +99,14 @@ def segment_video(
         transcript_status = seg.transcript_status
         if transcript_source == "asr":
             _t = perf_counter()
+            # Adapter đã hardening + clean_transcript + chuẩn hóa VLSP nội bộ.
             text = asr_adapter.transcribe(seg_wav).strip()
             sink.add("asr", perf_counter() - _t)
             transcript_status = "ready" if text else "missing"
+        else:
+            # VTT path: loại caption ảo giác phổ biến + chuẩn hóa VLSP (giữ dấu thanh).
+            text = "" if is_blocklisted(text) else normalize_vlsp(text)
+            transcript_status = seg.transcript_status if text else "missing"
         write_text(seg_txt, text)
 
         rows.append({
