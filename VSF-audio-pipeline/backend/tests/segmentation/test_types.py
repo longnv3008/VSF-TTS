@@ -21,6 +21,7 @@ def test_segmentation_config_from_mapping():
         chunk_ms=64, threshold=0.7, min_volume=0.6, start_secs=0.1, stop_secs=0.45,
         sentence_max_sec=12.0, sentence_min_sec=0.3, phrase_gap_sec=0.45,
         pad_sec=0.1, min_segment_sec=0.3, boundary_slack_sec=0.5, merge_gap_sec=0.5,
+        quality_gate_enabled=False,
     )
     assert cfg.threshold == 0.7
     assert cfg.sentence_max_sec == 12.0

@@ -65,8 +65,8 @@ class Settings(BaseSettings):
     telegram_bot_token: str = Field(default="", alias="TELEGRAM_BOT_TOKEN")
     telegram_chat_id: str = Field(default="", alias="TELEGRAM_CHAT_ID")
 
-    # Cấu hình segment-level pipeline (VAD gRPC + cắt câu + ASR fallback).
-    vad_grpc_url: str = Field(default="127.0.0.1:8001", alias="VAD_GRPC_URL")
+    # Cấu hình segment-level pipeline (VAD ONNX nội bộ + cắt câu + ASR fallback).
+    vad_model_path: Path = Field(default=Path("../VAD/models/vad/1/vad.onnx"), alias="VAD_MODEL_PATH")
     vad_threshold: float = Field(default=0.7, alias="VAD_THRESHOLD")
     vad_min_volume: float = Field(default=0.6, alias="VAD_MIN_VOLUME")
     vad_start_secs: float = Field(default=0.1, alias="VAD_START_SECS")
@@ -80,6 +80,18 @@ class Settings(BaseSettings):
     segment_min_sec: float = Field(default=0.3, alias="SEGMENT_MIN_SEC")
     segment_boundary_slack_sec: float = Field(default=0.5, alias="SEGMENT_BOUNDARY_SLACK_SEC")
     segment_merge_gap_sec: float = Field(default=0.5, alias="SEGMENT_MERGE_GAP_SEC")
+    quality_gate_enabled: bool = Field(default=True, alias="QUALITY_GATE_ENABLED")
+    quality_gate_min_rms: float = Field(default=0.015, alias="QUALITY_GATE_MIN_RMS")
+    quality_gate_min_peak: float = Field(default=0.05, alias="QUALITY_GATE_MIN_PEAK")
+    quality_gate_min_active_ratio: float = Field(default=0.35, alias="QUALITY_GATE_MIN_ACTIVE_RATIO")
+    quality_gate_chunk_ms: int = Field(default=200, alias="QUALITY_GATE_CHUNK_MS")
+    quality_gate_min_tokens_per_sec: float = Field(default=0.6, alias="QUALITY_GATE_MIN_TOKENS_PER_SEC")
+    quality_gate_max_tokens_per_sec: float = Field(default=6.0, alias="QUALITY_GATE_MAX_TOKENS_PER_SEC")
+    quality_gate_long_segment_sec: float = Field(default=2.5, alias="QUALITY_GATE_LONG_SEGMENT_SEC")
+    quality_gate_min_tokens_for_long_segment: int = Field(
+        default=2,
+        alias="QUALITY_GATE_MIN_TOKENS_FOR_LONG_SEGMENT",
+    )
     asr_model: str = Field(default="large-v3", alias="ASR_MODEL")
     asr_device: str = Field(default="cuda", alias="ASR_DEVICE")
     # ASR hardening chống ảo giác khoảng lặng (xem FasterWhisperAdapter / text_quality).

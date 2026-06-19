@@ -38,3 +38,5 @@ def test_segment_and_label_and_metadata(make_wav, tmp_path, monkeypatch):
     assert jsonl.exists()
     first = json.loads(jsonl.read_text(encoding="utf-8").splitlines()[0])
     assert first["segment_id"] == "yt_vid__sent000001"
+    assert "quality_label" in first
+    assert "quality_score" in first

@@ -127,12 +127,12 @@ validate_urls
 
 Output cua pipeline la cac segment WAV per cau + file transcript TXT tuong ung, va file tong hop `data/metadata/<batch>_segments.csv` / `.jsonl` chua toan bo thong tin segment (audio_id, segment_id, start, end, text, transcript_source, ...).
 
-VAD chay qua Triton gRPC (cau hinh bang bien `VAD_GRPC_URL`). Khi video thieu phu de (khong co file `.vtt`), pipeline tu dong fallback sang ASR dung `faster-whisper` (cau hinh bang `ASR_MODEL` va `ASR_DEVICE`).
+VAD chay truc tiep trong backend bang ONNX Runtime (cau hinh bang bien `VAD_MODEL_PATH`). Khi video thieu phu de (khong co file `.vtt`), pipeline tu dong fallback sang ASR dung `faster-whisper` (cau hinh bang `ASR_MODEL` va `ASR_DEVICE`).
 
 Bien moi can cau hinh (chua co trong `.env.example`, can them thu cong):
 
 ```text
-VAD_GRPC_URL        URL cua Triton VAD server, vi du: 127.0.0.1:8001
+VAD_MODEL_PATH      Duong dan model ONNX VAD, vi du: ../VAD/models/vad/1/vad.onnx
 VAD_THRESHOLD       Nguong xac suat noi (default: 0.7)
 VAD_MIN_VOLUME      Nguong volume toi thieu (default: 0.6)
 SEGMENTS_DIR        Thu muc luu segment WAV (default: data/processed/segments)

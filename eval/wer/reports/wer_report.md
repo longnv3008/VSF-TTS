@@ -1,6 +1,6 @@
 # Báo cáo WER — label output 3 video (pipeline E2E)
 
-_Sinh tự động bởi `eval/wer/score.py` ngày 2026-06-17._
+_Sinh tự động bởi `eval/wer/score.py` ngày 2026-06-19._
 
 ## 1. Dữ liệu
 

@@ -2,11 +2,11 @@ from app.core.config import Settings
 
 # Danh sách env vars của segmentation cần clear để test pure defaults (Docker có thể override chúng).
 _SEGMENTATION_ENV_VARS = [
-    "VAD_GRPC_URL", "VAD_THRESHOLD", "VAD_MIN_VOLUME", "VAD_START_SECS",
+    "VAD_MODEL_PATH", "VAD_THRESHOLD", "VAD_MIN_VOLUME", "VAD_START_SECS",
     "VAD_STOP_SECS", "VAD_CHUNK_MS", "SEGMENTS_DIR", "SENTENCE_MAX_SEC",
     "SENTENCE_MIN_SEC", "PHRASE_GAP_SEC", "SEGMENT_PAD_SEC",
     "SEGMENT_MIN_SEC", "SEGMENT_BOUNDARY_SLACK_SEC", "SEGMENT_MERGE_GAP_SEC",
-    "ASR_MODEL", "ASR_DEVICE",
+    "ASR_MODEL", "ASR_DEVICE", "ASR_NO_SPEECH_THRESHOLD", "ASR_LOGPROB_MIN", "ASR_VAD_FILTER",
 ]
 
 
@@ -15,7 +15,7 @@ def test_segmentation_settings_defaults(monkeypatch):
     for var in _SEGMENTATION_ENV_VARS:
         monkeypatch.delenv(var, raising=False)
     s = Settings()
-    assert s.vad_grpc_url == "127.0.0.1:8001"
+    assert s.vad_model_path.as_posix() == "../VAD/models/vad/1/vad.onnx"
     assert s.vad_threshold == 0.7
     assert s.vad_min_volume == 0.6
     assert s.vad_start_secs == 0.1

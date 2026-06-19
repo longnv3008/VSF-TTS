@@ -21,7 +21,7 @@ from app.modules.audio_pipeline.application.separation.demucs_separator import (
     separate_vocals as demucs_separate_vocals,
 )
 from app.modules.audio_pipeline.application.segmentation.types import SegmentationConfig
-from app.modules.audio_pipeline.application.segmentation.vad_grpc_client import TritonVadClient
+from app.modules.audio_pipeline.application.segmentation.vad_local_client import OnnxVadClient
 from app.modules.audio_pipeline.application.stage_timing import (
     SegmentTimingSink,
     close_timing,
@@ -1473,12 +1473,21 @@ class AudioPipelineService:
             min_segment_sec=settings.segment_min_sec,
             boundary_slack_sec=settings.segment_boundary_slack_sec,
             merge_gap_sec=settings.segment_merge_gap_sec,
+            quality_gate_enabled=settings.quality_gate_enabled,
+            quality_gate_min_rms=settings.quality_gate_min_rms,
+            quality_gate_min_peak=settings.quality_gate_min_peak,
+            quality_gate_min_active_ratio=settings.quality_gate_min_active_ratio,
+            quality_gate_chunk_ms=settings.quality_gate_chunk_ms,
+            quality_gate_min_tokens_per_sec=settings.quality_gate_min_tokens_per_sec,
+            quality_gate_max_tokens_per_sec=settings.quality_gate_max_tokens_per_sec,
+            quality_gate_long_segment_sec=settings.quality_gate_long_segment_sec,
+            quality_gate_min_tokens_for_long_segment=settings.quality_gate_min_tokens_for_long_segment,
         )
 
     def _build_segment_dependencies(self):
         # Tách riêng để test có thể inject fake VAD/ASR.
         config = self._build_segmentation_config()
-        vad_client = TritonVadClient(url=settings.vad_grpc_url, config=config)
+        vad_client = OnnxVadClient(model_path=settings.vad_model_path, config=config)
         asr_adapter = FasterWhisperAdapter(
             model_name=settings.asr_model,
             device=settings.asr_device,
@@ -1552,7 +1561,8 @@ class AudioPipelineService:
         fieldnames = [
             "audio_id", "video_id", "segment_id", "segment_file", "transcript_file",
             "start", "end", "duration", "text", "transcript_source",
-            "transcript_status", "vad_status", "source_url", "title",
+            "transcript_status", "vad_status", "quality_label", "quality_score",
+            "quality_reasons", "source_url", "title",
         ]
         csv_path = self.metadata_dir / f"{batch}_segments.csv"
 

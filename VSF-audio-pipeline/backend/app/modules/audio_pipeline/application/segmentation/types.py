@@ -46,3 +46,12 @@ class SegmentationConfig:
     min_segment_sec: float
     boundary_slack_sec: float
     merge_gap_sec: float
+    quality_gate_enabled: bool = False
+    quality_gate_min_rms: float = 0.015
+    quality_gate_min_peak: float = 0.05
+    quality_gate_min_active_ratio: float = 0.35
+    quality_gate_chunk_ms: int = 200
+    quality_gate_min_tokens_per_sec: float = 0.6
+    quality_gate_max_tokens_per_sec: float = 6.0
+    quality_gate_long_segment_sec: float = 2.5
+    quality_gate_min_tokens_for_long_segment: int = 2

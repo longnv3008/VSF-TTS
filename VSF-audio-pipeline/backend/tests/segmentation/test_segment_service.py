@@ -1,5 +1,6 @@
 from app.modules.audio_pipeline.application.segmentation.segment_service import segment_video
 from app.modules.audio_pipeline.application.segmentation.types import SegmentationConfig, SpeechRegion
+import wave
 
 
 def _cfg():
@@ -7,6 +8,7 @@ def _cfg():
         chunk_ms=64, threshold=0.7, min_volume=0.6, start_secs=0.1, stop_secs=0.45,
         sentence_max_sec=12.0, sentence_min_sec=0.3, phrase_gap_sec=0.45,
         pad_sec=0.0, min_segment_sec=0.3, boundary_slack_sec=0.5, merge_gap_sec=0.5,
+        quality_gate_enabled=False,
     )
 
 
@@ -123,6 +125,48 @@ def test_asr_fallback_when_no_vtt(make_wav, tmp_path):
     assert len(rows) == 1
     assert rows[0]["transcript_source"] == "asr"
     assert rows[0]["text"] == "loi asr"
+
+
+def test_quality_gate_drops_silent_segment_before_asr(make_wav, tmp_path):
+    cfg = _cfg()
+    cfg = SegmentationConfig(**{**cfg.__dict__, "quality_gate_enabled": True})
+    wav = make_wav(seconds=2.0, name="yt_vid.wav")
+    row = {"audio_id": "yt_vid", "video_id": "vid", "title": "t",
+           "source_url": "u", "audio_file_path": str(wav), "subtitle_file_path": ""}
+    rows = segment_video(
+        row, vad_client=_FakeVad([SpeechRegion(0.0, 1.0)], 2.0), asr_adapter=_FakeAsr(),
+        config=cfg, segments_root=tmp_path / "segments", batch_name="b1",
+    )
+    assert rows[0]["text"] == ""
+    assert rows[0]["transcript_status"] == "missing"
+    assert rows[0]["quality_label"] == "low_quality"
+    assert "low_rms" in rows[0]["quality_reasons"]
+
+
+def test_quality_gate_keeps_loud_segment_with_reasonable_text(tmp_path):
+    cfg = SegmentationConfig(
+        chunk_ms=64, threshold=0.7, min_volume=0.6, start_secs=0.1, stop_secs=0.45,
+        sentence_max_sec=12.0, sentence_min_sec=0.3, phrase_gap_sec=0.45,
+        pad_sec=0.0, min_segment_sec=0.3, boundary_slack_sec=0.5, merge_gap_sec=0.5,
+        quality_gate_enabled=True,
+    )
+    wav = tmp_path / "yt_vid.wav"
+    sample_rate = 16000
+    frames = int(2.0 * sample_rate)
+    with wave.open(str(wav), "wb") as writer:
+        writer.setnchannels(1)
+        writer.setsampwidth(2)
+        writer.setframerate(sample_rate)
+        writer.writeframes((b"\x80\x0c" * frames))
+    row = {"audio_id": "yt_vid", "video_id": "vid", "title": "t",
+           "source_url": "u", "audio_file_path": str(wav), "subtitle_file_path": ""}
+    rows = segment_video(
+        row, vad_client=_FakeVad([SpeechRegion(0.0, 1.0)], 2.0), asr_adapter=_FakeAsr(),
+        config=cfg, segments_root=tmp_path / "segments", batch_name="b1",
+    )
+    assert rows[0]["text"] == "loi asr"
+    assert rows[0]["transcript_status"] == "ready"
+    assert rows[0]["quality_label"] == "speech_clean"
 
 
 # ---------------------------------------------------------------------------
