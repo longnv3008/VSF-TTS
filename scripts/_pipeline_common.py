@@ -36,6 +36,25 @@ def make_vad_args(args: argparse.Namespace) -> argparse.Namespace:
     )
 
 
+def build_ffmpeg_cmd(
+    src: Path,
+    dst: Path,
+    sample_rate: int,
+    ffmpeg_bin: str,
+    *,
+    loudnorm: bool = False,
+    loudnorm_i: float = -16.0,
+    loudnorm_tp: float = -1.5,
+    loudnorm_lra: float = 11.0,
+) -> list[str]:
+    """Dựng argv ffmpeg cho clean. ``loudnorm`` bật -> thêm chuẩn hóa âm lượng EBU R128."""
+    cmd = [ffmpeg_bin, "-hide_banner", "-loglevel", "error", "-y", "-i", str(src), "-vn"]
+    if loudnorm:
+        cmd += ["-af", f"loudnorm=I={loudnorm_i}:TP={loudnorm_tp}:LRA={loudnorm_lra}"]
+    cmd += ["-ac", "1", "-ar", str(sample_rate), "-sample_fmt", "s16", str(dst)]
+    return cmd
+
+
 def cut_wav_segment(src: Path, dst: Path, start_sec: float, end_sec: float) -> None:
     dst.parent.mkdir(parents=True, exist_ok=True)
     with wave.open(str(src), "rb") as reader:

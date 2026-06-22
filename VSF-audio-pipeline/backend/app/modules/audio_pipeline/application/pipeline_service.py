@@ -31,6 +31,39 @@ from app.utils import get_logger, send_telegram_log
 from app.utils.filesystem import ensure_dir, read_csv, write_csv
 
 logger = get_logger(__name__)
+
+
+def build_normalize_cmd(
+    raw_file: Path,
+    output_file: Path,
+    *,
+    sample_rate: int,
+    mono: bool,
+    loudnorm: bool = False,
+    loudnorm_i: float = -16.0,
+    loudnorm_tp: float = -1.5,
+    loudnorm_lra: float = 11.0,
+) -> list[str]:
+    """Dựng argv ffmpeg để normalize audio về format thống nhất.
+
+    ``loudnorm`` bật -> thêm filter EBU R128 (chuẩn hóa âm lượng), không chỉ đổi format.
+    Tách riêng để test được command mà không chạy ffmpeg.
+    """
+    cmd = ["ffmpeg", "-y", "-i", str(raw_file)]
+    if loudnorm:
+        cmd += ["-af", f"loudnorm=I={loudnorm_i}:TP={loudnorm_tp}:LRA={loudnorm_lra}"]
+    cmd += [
+        "-ac",
+        "1" if mono else "2",
+        "-ar",
+        str(sample_rate),
+        "-sample_fmt",
+        "s16",
+        str(output_file),
+    ]
+    return cmd
+
+
 _CRAWL_LOCK = threading.Lock()
 _CRAWL_STATE_LOCK = threading.Lock()
 _PROXY_STATE_LOCK = threading.Lock()
@@ -1439,19 +1472,16 @@ class AudioPipelineService:
                     video_id = row.get("video_id", "").strip() or raw_file.stem.split("__", 1)[0]
                     output_file = self.processed_dir / f"yt_{video_id}.wav"
                     logger.info("step=normalize_audio | url=%s", row.get("source_url", ""))
-                    command = [
-                        "ffmpeg",
-                        "-y",
-                        "-i",
-                        str(raw_file),
-                        "-ac",
-                        "1" if mono else "2",
-                        "-ar",
-                        str(sample_rate),
-                        "-sample_fmt",
-                        "s16",
-                        str(output_file),
-                    ]
+                    command = build_normalize_cmd(
+                        raw_file,
+                        output_file,
+                        sample_rate=sample_rate,
+                        mono=mono,
+                        loudnorm=settings.loudnorm_enabled,
+                        loudnorm_i=settings.loudnorm_i,
+                        loudnorm_tp=settings.loudnorm_tp,
+                        loudnorm_lra=settings.loudnorm_lra,
+                    )
                     result = subprocess.run(command, capture_output=True, text=True, check=False)
                     if result.returncode != 0:
                         logger.warning("step=normalize_audio | url=%s | error=%s", row.get("source_url", ""), result.stderr.strip())
