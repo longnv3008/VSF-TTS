@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import random
-import re
 import shutil
 import subprocess
 import threading
@@ -14,6 +13,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from app.core.config import settings
+from app.modules.audio_pipeline.application import crawl_errors
 from app.modules.audio_pipeline.application.exceptions import BatchAbortError, SkipUrlError, format_function_error
 from app.modules.audio_pipeline.application.segmentation.asr_adapter import FasterWhisperAdapter
 from app.modules.audio_pipeline.application.segmentation.segment_service import segment_video
@@ -38,48 +38,6 @@ _TELEGRAM_DEDUP_LOCK = threading.Lock()
 _LAST_CRAWL_FINISHED_AT = 0.0
 _PROXY_RUNTIME_STATE: dict[str, dict[str, float | int]] = {}
 _TELEGRAM_SENT_KEYS: set[tuple[str, str, str, str]] = set()
-_SKIPPABLE_DOWNLOAD_ERROR_SIGNALS = (
-    "http error 403",
-    "forbidden",
-    "unable to download video data",
-)
-_COOKIE_ERROR_PATTERNS = (
-    r"\byoutube account cookies? (?:are|is) no longer valid\b",
-    r"\bprovided youtube account cookies? (?:are|is) no longer valid\b",
-    r"\bcookies? (?:are|is) no longer valid\b",
-    r"\bcookies? expired\b",
-    r"\bfailed to (?:load|decrypt) cookies?\b",
-    r"\bcould not read cookies? file\b",
-    r"\bno such file or directory.*cookies?\b",
-    r"\bcookies? (?:from browser|database) could not be loaded\b",
-)
-_AUTH_HARD_FAIL_PATTERNS = (
-    r"\buse --cookies-from-browser or --cookies for the authentication\b",
-    r"\bthis video is private\b",
-    r"\bprivate video\b",
-    r"\bmembers-only\b",
-    r"\bjoin this channel to get access\b",
-    r"\bconfirm your age\b",
-    r"\bage-restricted\b",
-)
-_COOKIE_ERROR_REGEXES = tuple(re.compile(pattern, re.IGNORECASE) for pattern in _COOKIE_ERROR_PATTERNS)
-_AUTH_HARD_FAIL_REGEXES = tuple(re.compile(pattern, re.IGNORECASE) for pattern in _AUTH_HARD_FAIL_PATTERNS)
-_NETWORK_ERROR_SIGNALS = (
-    "timed out",
-    "timeout",
-    "connection reset",
-    "connection aborted",
-    "connection refused",
-    "temporary failure in name resolution",
-    "name or service not known",
-    "tls",
-    "ssl",
-    "proxy error",
-    "proxyconnect",
-    "incomplete read",
-    "network is unreachable",
-    "remote end closed connection",
-)
 
 
 @dataclass(frozen=True)
@@ -111,7 +69,7 @@ class _YtdlpLogger:
 
     def warning(self, message: str) -> None:
         logger.warning("step=crawl_audio | url=%s | error=%s", self.url, message)
-        if AudioPipelineService._is_cookie_related_message(message):
+        if crawl_errors.is_cookie_related_message(message):
             AudioPipelineService._notify_telegram_once(
                 dedup_key=("cookie_warning", str(self.job_id or ""), self.url, str(message).strip()),
                 message="YouTube cookie warning",
@@ -126,7 +84,7 @@ class _YtdlpLogger:
     def error(self, message: str) -> None:
         self.last_error_message = str(message).strip() or None
         logger.error("step=crawl_audio | url=%s | error=%s", self.url, message)
-        if AudioPipelineService._is_cookie_related_message(message):
+        if crawl_errors.is_cookie_related_message(message):
             AudioPipelineService._notify_telegram_once(
                 dedup_key=("cookie_error", str(self.job_id or ""), self.url, str(message).strip()),
                 message="YouTube cookie error",
@@ -457,11 +415,6 @@ class AudioPipelineService:
             cookies.append(_CookieConfig(name="backup", path=backup))
         return cookies
 
-    @staticmethod
-    def _is_cookie_invalid_message(message: str) -> bool:
-        normalized = re.sub(r"\s+", " ", str(message)).strip()
-        return any(pattern.search(normalized) for pattern in _COOKIE_ERROR_REGEXES)
-
     def _notify_cookie_switch(
         self,
         *,
@@ -551,49 +504,6 @@ class AudioPipelineService:
                 continue
             return candidate
         return None
-
-    @staticmethod
-    def _is_rate_limited_error(exc: Exception) -> bool:
-        message = str(exc).lower()
-        signals = (
-            "too many requests",
-            "http error 429",
-            "status code: 429",
-            "sign in to confirm you're not a bot",
-            "log in to confirm you're not a bot",
-            "confirm you're not a bot",
-            "this request has been blocked",
-            "temporarily unavailable",
-            "rate limit",
-        )
-        return any(signal in message for signal in signals)
-
-    @staticmethod
-    def _compute_retry_delay(attempt: int, blocked: bool) -> float:
-        if blocked:
-            base_delay = max(60.0, settings.crawl_block_cooldown_sec / 4)
-            return min(settings.crawl_block_cooldown_sec, base_delay * attempt)
-        return min(30.0, 5.0 * attempt)
-
-    @staticmethod
-    def _is_skippable_download_error(exc: Exception) -> bool:
-        message = str(exc).lower()
-        return any(signal in message for signal in _SKIPPABLE_DOWNLOAD_ERROR_SIGNALS)
-
-    @staticmethod
-    def _is_cookie_related_message(message: str) -> bool:
-        normalized = re.sub(r"\s+", " ", str(message)).strip()
-        return any(pattern.search(normalized) for pattern in _COOKIE_ERROR_REGEXES)
-
-    @staticmethod
-    def _is_auth_hard_fail_message(message: str) -> bool:
-        normalized = re.sub(r"\s+", " ", str(message)).strip()
-        return any(pattern.search(normalized) for pattern in _AUTH_HARD_FAIL_REGEXES)
-
-    @staticmethod
-    def _is_transient_network_error(exc: Exception) -> bool:
-        message = str(exc).lower()
-        return any(signal in message for signal in _NETWORK_ERROR_SIGNALS)
 
     def _sleep_between_urls(self, index: int, total: int, *, job_id: int | None, batch_name: str | None) -> None:
         min_delay = max(0.0, settings.crawl_min_delay_sec)
@@ -814,7 +724,7 @@ class AudioPipelineService:
                             break
                         except DownloadError as exc:
                             last_error = exc
-                            blocked = self._is_rate_limited_error(exc)
+                            blocked = crawl_errors.is_rate_limited_error(exc)
                             route_name = active_proxy.name if active_proxy else "direct"
                             self._log_crawl_warning(
                                 "retry",
@@ -823,7 +733,7 @@ class AudioPipelineService:
                                 blocked=blocked,
                                 error=str(exc),
                             )
-                            if self._is_cookie_related_message(str(exc)):
+                            if crawl_errors.is_cookie_related_message(str(exc)):
                                 self._notify_telegram_once(
                                     dedup_key=(
                                         "cookie_warning",
@@ -840,7 +750,7 @@ class AudioPipelineService:
                                     attempt=attempt,
                                     error=str(exc),
                                 )
-                            if self._is_cookie_invalid_message(str(exc)) and active_cookie is not None:
+                            if crawl_errors.is_cookie_invalid_message(str(exc)) and active_cookie is not None:
                                 tried_cookie_names.add(active_cookie.name)
                                 next_cookie = next(
                                     (
@@ -862,7 +772,7 @@ class AudioPipelineService:
                                         attempt=attempt,
                                         reason=str(exc),
                                     )
-                                    delay = min(5.0, self._compute_retry_delay(attempt, False))
+                                    delay = min(5.0, crawl_errors.compute_retry_delay(attempt, False))
                                     self._log_crawl_warning(
                                         "retry_wait",
                                         url=url,
@@ -886,7 +796,7 @@ class AudioPipelineService:
                                         attempt=attempt,
                                         reason=f"{exc} | fallback=guest",
                                     )
-                                    delay = min(5.0, self._compute_retry_delay(attempt, False))
+                                    delay = min(5.0, crawl_errors.compute_retry_delay(attempt, False))
                                     self._log_crawl_warning(
                                         "retry_wait",
                                         url=url,
@@ -898,9 +808,9 @@ class AudioPipelineService:
                                     sleep(delay)
                                     continue
                                 raise SkipUrlError(step="crawl_audio", failed_url=url, cause=exc) from exc
-                            if self._is_skippable_download_error(exc):
+                            if crawl_errors.is_skippable_download_error(exc):
                                 raise SkipUrlError(step="crawl_audio", failed_url=url, cause=exc) from exc
-                            if self._is_auth_hard_fail_message(str(exc)):
+                            if crawl_errors.is_auth_hard_fail_message(str(exc)):
                                 raise SkipUrlError(step="crawl_audio", failed_url=url, cause=exc) from exc
                             if blocked and active_proxy:
                                 failed_proxy = active_proxy
@@ -950,7 +860,7 @@ class AudioPipelineService:
                                         remaining_urls=urls[index:],
                                         cause=exc,
                                     ) from exc
-                            elif self._is_transient_network_error(exc):
+                            elif crawl_errors.is_transient_network_error(exc):
                                 network_retries = route_network_retries.get(route_name, 0)
                                 if active_proxy and active_proxy.name != "direct":
                                     self._notify_proxy_error(
@@ -977,7 +887,7 @@ class AudioPipelineService:
                                     cause=exc,
                                 ) from exc
 
-                            delay = self._compute_retry_delay(attempt, blocked)
+                            delay = crawl_errors.compute_retry_delay(attempt, blocked)
                             retry_mode = "failover" if blocked else "same_route"
                             self._log_crawl_warning(
                                 "retry_wait",
@@ -1015,7 +925,7 @@ class AudioPipelineService:
                             sleep(delay)
                         except Exception as exc:
                             last_error = exc
-                            blocked = self._is_rate_limited_error(exc)
+                            blocked = crawl_errors.is_rate_limited_error(exc)
                             route_name = active_proxy.name if active_proxy else "direct"
                             logger.exception(
                                 "crawl:error | url=%s | attempt=%s | blocked=%s | error=%s",
@@ -1024,7 +934,7 @@ class AudioPipelineService:
                                 blocked,
                                 format_function_error("crawl_youtube", exc),
                             )
-                            if self._is_cookie_related_message(str(exc)):
+                            if crawl_errors.is_cookie_related_message(str(exc)):
                                 self._notify_telegram_once(
                                     dedup_key=(
                                         "cookie_error",
@@ -1041,7 +951,7 @@ class AudioPipelineService:
                                     attempt=attempt,
                                     error=format_function_error("crawl_youtube", exc),
                                 )
-                            if self._is_cookie_invalid_message(str(exc)) and active_cookie is not None:
+                            if crawl_errors.is_cookie_invalid_message(str(exc)) and active_cookie is not None:
                                 tried_cookie_names.add(active_cookie.name)
                                 next_cookie = next(
                                     (
@@ -1063,7 +973,7 @@ class AudioPipelineService:
                                         attempt=attempt,
                                         reason=format_function_error("crawl_youtube", exc),
                                     )
-                                    delay = min(5.0, self._compute_retry_delay(attempt, False))
+                                    delay = min(5.0, crawl_errors.compute_retry_delay(attempt, False))
                                     self._log_crawl_warning(
                                         "retry_wait",
                                         url=url,
@@ -1087,7 +997,7 @@ class AudioPipelineService:
                                         attempt=attempt,
                                         reason=f"{format_function_error('crawl_youtube', exc)} | fallback=guest",
                                     )
-                                    delay = min(5.0, self._compute_retry_delay(attempt, False))
+                                    delay = min(5.0, crawl_errors.compute_retry_delay(attempt, False))
                                     self._log_crawl_warning(
                                         "retry_wait",
                                         url=url,
@@ -1099,9 +1009,9 @@ class AudioPipelineService:
                                     sleep(delay)
                                     continue
                                 raise SkipUrlError(step="crawl_audio", failed_url=url, cause=exc) from exc
-                            if self._is_skippable_download_error(exc):
+                            if crawl_errors.is_skippable_download_error(exc):
                                 raise SkipUrlError(step="crawl_audio", failed_url=url, cause=exc) from exc
-                            if self._is_auth_hard_fail_message(str(exc)):
+                            if crawl_errors.is_auth_hard_fail_message(str(exc)):
                                 raise SkipUrlError(step="crawl_audio", failed_url=url, cause=exc) from exc
                             if blocked and active_proxy:
                                 failed_proxy = active_proxy
@@ -1151,7 +1061,7 @@ class AudioPipelineService:
                                         remaining_urls=urls[index:],
                                         cause=exc,
                                     ) from exc
-                            elif self._is_transient_network_error(exc):
+                            elif crawl_errors.is_transient_network_error(exc):
                                 network_retries = route_network_retries.get(route_name, 0)
                                 if active_proxy and active_proxy.name != "direct":
                                     self._notify_proxy_error(
@@ -1178,7 +1088,7 @@ class AudioPipelineService:
                                     cause=exc,
                                 ) from exc
 
-                            delay = self._compute_retry_delay(attempt, blocked)
+                            delay = crawl_errors.compute_retry_delay(attempt, blocked)
                             retry_mode = "failover" if blocked else "same_route"
                             self._log_crawl_warning(
                                 "retry_wait",
