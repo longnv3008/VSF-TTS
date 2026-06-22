@@ -201,7 +201,7 @@ export default function DashboardPage() {
                   placeholder="Chọn batch (tên)"
                   options={reviewBatchOptions}
                   value={reviewBatchName ?? undefined}
-                  onChange={(value) => setReviewBatchName(value)}
+                  onChange={(value) => setReviewBatchName(value ?? null)}
                   allowClear
                 />
                 <ReviewPanel batchName={reviewBatchName} />

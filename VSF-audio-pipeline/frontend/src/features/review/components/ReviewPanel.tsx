@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button, Card, Empty, Input, Space, Statistic, Table, Tag, message } from "antd";
 
 import type { ReviewSegment, WerSummary } from "../../../entities/review/model";
@@ -26,7 +26,7 @@ export default function ReviewPanel({ batchName }: Props) {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [msgApi, contextHolder] = message.useMessage();
 
-  async function load() {
+  const load = useCallback(async () => {
     if (!batchName) return;
     setLoading(true);
     try {
@@ -42,12 +42,11 @@ export default function ReviewPanel({ batchName }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [batchName, msgApi]);
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [batchName]);
+  }, [load]);
 
   async function handleSave(segmentId: string) {
     if (!batchName) return;
@@ -82,7 +81,7 @@ export default function ReviewPanel({ batchName }: Props) {
       render: (text: string, row: ReviewSegment) => (
         <Space direction="vertical" size={2}>
           <span>{text}</span>
-          <Tag color="volcano">{row.quality_reasons}</Tag>
+          {row.quality_reasons ? <Tag color="volcano">{row.quality_reasons}</Tag> : null}
         </Space>
       ),
     },
