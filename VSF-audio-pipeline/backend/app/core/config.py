@@ -110,6 +110,10 @@ class Settings(BaseSettings):
     asr_no_speech_threshold: float = Field(default=0.6, alias="ASR_NO_SPEECH_THRESHOLD")
     asr_logprob_min: float = Field(default=-1.0, alias="ASR_LOGPROB_MIN")
     asr_vad_filter: bool = Field(default=True, alias="ASR_VAD_FILTER")
+    # WER gate: ASR (hypothesis) vs VTT (reference) mức segment để QA alignment.
+    # Tắt mặc định (ASR mỗi segment rất nặng); bật để flag segment lệch caption.
+    wer_gate_enabled: bool = Field(default=False, alias="WER_GATE_ENABLED")
+    wer_gate_max: float = Field(default=0.05, alias="WER_GATE_MAX")
 
     # Tách vocal bằng Demucs trước normalize (chạy trên raw, giữ chất lượng tách).
     # Tắt mặc định -> pipeline giữ nguyên hành vi cũ. Command trỏ env riêng có torch.

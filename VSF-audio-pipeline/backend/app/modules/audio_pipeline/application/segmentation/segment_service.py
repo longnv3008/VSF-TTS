@@ -24,6 +24,7 @@ from app.modules.audio_pipeline.application.segmentation.text_quality import (
 )
 from app.modules.audio_pipeline.application.segmentation.types import AlignedSegment, SegmentationConfig
 from app.modules.audio_pipeline.application.segmentation.vtt_parser import parse_youtube_vtt
+from app.modules.audio_pipeline.application.segmentation.wer_gate import segment_wer
 
 
 class VadClient:  # giao diện tối thiểu để type-hint
@@ -186,6 +187,23 @@ def segment_video(
             if not quality.keep:
                 text = ""
                 transcript_status = "missing"
+
+        # WER gate (QA alignment): ASR hypothesis vs VTT reference. Tắt mặc định
+        # vì ASR mỗi segment rất nặng. WER cao -> caption lệch tiếng -> flag review.
+        if config.wer_gate_enabled and quality.keep and text:
+            _t = perf_counter()
+            hyp = asr_adapter.transcribe(seg_wav).strip()
+            sink.add("asr", perf_counter() - _t)
+            wer = segment_wer(text, hyp)
+            if wer > config.wer_gate_max:
+                reasons = tuple(dict.fromkeys(quality.reasons + (f"wer_gate>{config.wer_gate_max}",)))
+                quality = SegmentQualityDecision(
+                    keep=False,
+                    label="needs_review",
+                    score=round(min(quality.score, 1.0 - min(wer, 1.0)), 3),
+                    reasons=reasons,
+                )
+                transcript_status = "needs_review"
         write_text(seg_txt, text)
 
         rows.append({

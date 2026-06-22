@@ -1581,6 +1581,8 @@ class AudioPipelineService:
             quality_gate_max_tokens_per_sec=settings.quality_gate_max_tokens_per_sec,
             quality_gate_long_segment_sec=settings.quality_gate_long_segment_sec,
             quality_gate_min_tokens_for_long_segment=settings.quality_gate_min_tokens_for_long_segment,
+            wer_gate_enabled=settings.wer_gate_enabled,
+            wer_gate_max=settings.wer_gate_max,
         )
 
     def _build_segment_dependencies(self):

@@ -57,3 +57,5 @@ class SegmentationConfig:
     quality_gate_max_tokens_per_sec: float = 6.0
     quality_gate_long_segment_sec: float = 2.5
     quality_gate_min_tokens_for_long_segment: int = 2
+    wer_gate_enabled: bool = False
+    wer_gate_max: float = 0.05

@@ -26,6 +26,16 @@ class _FakeAsr:
         return "loi asr"
 
 
+class _CountingAsr:
+    def __init__(self, text="loi asr"):
+        self.calls = 0
+        self._text = text
+
+    def transcribe(self, wav_path):
+        self.calls += 1
+        return self._text
+
+
 VTT = """WEBVTT
 
 00:00:00.000 --> 00:00:01.000
@@ -210,6 +220,58 @@ def test_quality_gate_keeps_loud_segment_with_vtt_text(tmp_path):
     assert rows[0]["text"] == "xin chao cac ban."
     assert rows[0]["transcript_status"] == "ready"
     assert rows[0]["quality_label"] == "speech_clean"
+
+
+def test_wer_gate_off_does_not_call_asr(make_wav, tmp_path):
+    # Mặc định gate tắt -> không gọi ASR, transcript VTT giữ nguyên ready.
+    asr = _CountingAsr()
+    wav = make_wav(seconds=2.0, name="yt_vid.wav")
+    vtt = tmp_path / "vid__t.vi.vtt"
+    vtt.write_text(VTT, encoding="utf-8")
+    row = {"audio_id": "yt_vid", "video_id": "vid", "title": "t",
+           "source_url": "u", "audio_file_path": str(wav), "subtitle_file_path": str(vtt)}
+    rows = segment_video(
+        row, vad_client=_FakeVad([SpeechRegion(0.0, 1.0)], 2.0), asr_adapter=asr,
+        config=_cfg(), segments_root=tmp_path / "segments", batch_name="b1",
+    )
+    assert asr.calls == 0
+    assert rows[0]["transcript_status"] == "ready"
+
+
+def test_wer_gate_flags_divergent_asr(make_wav, tmp_path):
+    # Gate bật + ASR lệch hẳn VTT -> flag needs_review, vẫn giữ text để review.
+    cfg = SegmentationConfig(**{**_cfg().__dict__, "wer_gate_enabled": True, "wer_gate_max": 0.05})
+    asr = _CountingAsr(text="hoan toan khac han")
+    wav = make_wav(seconds=2.0, name="yt_vid.wav")
+    vtt = tmp_path / "vid__t.vi.vtt"
+    vtt.write_text(VTT, encoding="utf-8")
+    row = {"audio_id": "yt_vid", "video_id": "vid", "title": "t",
+           "source_url": "u", "audio_file_path": str(wav), "subtitle_file_path": str(vtt)}
+    rows = segment_video(
+        row, vad_client=_FakeVad([SpeechRegion(0.0, 1.0)], 2.0), asr_adapter=asr,
+        config=cfg, segments_root=tmp_path / "segments", batch_name="b1",
+    )
+    assert asr.calls == 1
+    assert rows[0]["transcript_status"] == "needs_review"
+    assert rows[0]["quality_label"] == "needs_review"
+    assert rows[0]["text"] == "xin chao cac ban."
+
+
+def test_wer_gate_keeps_matching_asr(make_wav, tmp_path):
+    # Gate bật + ASR khớp VTT -> WER 0 -> không flag.
+    cfg = SegmentationConfig(**{**_cfg().__dict__, "wer_gate_enabled": True, "wer_gate_max": 0.05})
+    asr = _CountingAsr(text="xin chao cac ban")
+    wav = make_wav(seconds=2.0, name="yt_vid.wav")
+    vtt = tmp_path / "vid__t.vi.vtt"
+    vtt.write_text(VTT, encoding="utf-8")
+    row = {"audio_id": "yt_vid", "video_id": "vid", "title": "t",
+           "source_url": "u", "audio_file_path": str(wav), "subtitle_file_path": str(vtt)}
+    rows = segment_video(
+        row, vad_client=_FakeVad([SpeechRegion(0.0, 1.0)], 2.0), asr_adapter=asr,
+        config=cfg, segments_root=tmp_path / "segments", batch_name="b1",
+    )
+    assert rows[0]["transcript_status"] == "ready"
+    assert rows[0]["text"] == "xin chao cac ban."
 
 
 # ---------------------------------------------------------------------------
