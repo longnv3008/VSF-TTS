@@ -37,8 +37,7 @@ def test_crawl_youtube_skips_url_when_vtt_missing(monkeypatch, tmp_path):
         "_get_ytdlp_modules",
         lambda: (_FakeYoutubeDL, RuntimeError),
     )
-    monkeypatch.setattr(service, "_acquire_crawl_slot", lambda *args, **kwargs: None)
-    monkeypatch.setattr(service, "_release_crawl_slot", lambda: None)
+    monkeypatch.setattr(service, "_sleep_before_next_job", lambda **kwargs: None)
     monkeypatch.setattr(service, "_pick_proxy", lambda *args, **kwargs: None)
     monkeypatch.setattr(service, "_wait_for_proxy_availability", lambda *args, **kwargs: None)
     monkeypatch.setattr(service, "_resolve_audio_file", lambda path: raw_file)

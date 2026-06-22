@@ -16,6 +16,10 @@ from app.core.config import settings
 from app.modules.audio_pipeline.application import crawl_errors
 from app.modules.audio_pipeline.application.exceptions import BatchAbortError, SkipUrlError, format_function_error
 from app.modules.audio_pipeline.application.segmentation.asr_adapter import FasterWhisperAdapter
+from app.modules.audio_pipeline.application.segmentation.metadata_fields import (
+    REVIEW_FIELDS,
+    SEGMENT_METADATA_FIELDS,
+)
 from app.modules.audio_pipeline.application.segmentation.segment_service import segment_video
 from app.modules.audio_pipeline.application.separation.demucs_separator import (
     separate_vocals as demucs_separate_vocals,
@@ -1699,20 +1703,25 @@ class AudioPipelineService:
         batch_name: str | None = None,
     ) -> Path:
         batch = batch_name or "batch_001"
-        fieldnames = [
-            "audio_id", "video_id", "segment_id", "segment_file", "transcript_file",
-            "start", "end", "duration", "text", "transcript_source",
-            "transcript_status", "vad_status", "quality_label", "quality_score",
-            "quality_reasons", "source_url", "title",
-        ]
         csv_path = self.metadata_dir / f"{batch}_segments.csv"
 
         existing = read_csv(csv_path)
-        merged: dict[str, dict] = {row.get("segment_id", f"row_{i}"): row for i, row in enumerate(existing)}
+        merged: dict[str, dict] = {
+            row.get("segment_id", f"row_{i}"): row for i, row in enumerate(existing)
+        }
         for row in segment_rows:
-            merged[row["segment_id"]] = {key: row.get(key, "") for key in fieldnames}
+            segment_id = row["segment_id"]
+            prev = merged.get(segment_id, {})
+            new_row = {key: row.get(key, "") for key in SEGMENT_METADATA_FIELDS}
+            # Giữ lại dữ liệu review người dùng đã điền khi pipeline chạy lại.
+            for review_field in REVIEW_FIELDS:
+                if prev.get(review_field):
+                    new_row[review_field] = prev[review_field]
+            if not new_row["review_status"] and new_row["quality_label"] == "needs_review":
+                new_row["review_status"] = "pending"
+            merged[segment_id] = new_row
 
-        write_csv(csv_path, fieldnames, merged.values())
+        write_csv(csv_path, SEGMENT_METADATA_FIELDS, merged.values())
 
         jsonl_path = csv_path.with_suffix(".jsonl")
         with jsonl_path.open("w", encoding="utf-8") as handle:

@@ -198,3 +198,29 @@ class BatchTimingSummary(BaseModel):
     per_stage: list[StageAggregate] = Field(default_factory=list)
     total_duration_sec: float = 0.0
     params: dict = Field(default_factory=dict)
+
+
+class ReviewSegment(BaseModel):
+    segment_id: str
+    text: str
+    reference: str = ""
+    manual_wer: float | None = None
+    review_status: str = "pending"
+    start: float | None = None
+    end: float | None = None
+    duration: float | None = None
+    quality_reasons: str = ""
+    spurious: bool = False
+
+
+class ReviewRequest(BaseModel):
+    reference: str = ""
+
+
+class WerSummary(BaseModel):
+    batch_name: str
+    micro_wer: float | None = None
+    reviewed: int = 0
+    total_needs_review: int = 0
+    spurious: int = 0
+    pending: int = 0

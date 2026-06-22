@@ -1,18 +1,25 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, BackgroundTasks, Depends
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.core.config import settings
 from app.modules.audio_pipeline.api.schemas import (
     BatchRead,
     BatchTimingSummary,
     IngestRequest,
     JobRead,
+    ReviewRequest,
+    ReviewSegment,
     StageAggregate,
     StageTimingItem,
     VideoStageBreakdown,
+    WerSummary,
+)
+from app.modules.audio_pipeline.application.segment_review_service import (
+    SegmentReviewService,
 )
 from app.modules.audio_pipeline.application.job_events import job_event_broker, publish_job_event
 from app.modules.audio_pipeline.application.job_service import PipelineJobService
@@ -124,3 +131,61 @@ async def resume_batch(
         publish_job_event("job_created", job)
         background_tasks.add_task(start_pipeline_job, job.id)
     return jobs
+
+
+def get_review_service() -> SegmentReviewService:
+    return SegmentReviewService(
+        metadata_dir=settings.metadata_dir,
+        segments_dir=settings.segments_dir,
+    )
+
+
+@router.get("/batches/{batch_name}/segments", response_model=list[ReviewSegment])
+async def list_review_segments(
+    batch_name: str,
+    status: str = "needs_review",
+    review_service: SegmentReviewService = Depends(get_review_service),
+) -> list[ReviewSegment]:
+    try:
+        return review_service.list_segments(batch_name, status=status)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/batches/{batch_name}/segments/{segment_id}/audio")
+async def get_segment_audio(
+    batch_name: str,
+    segment_id: str,
+    review_service: SegmentReviewService = Depends(get_review_service),
+) -> FileResponse:
+    try:
+        path = review_service.resolve_audio_path(batch_name, segment_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return FileResponse(path, media_type="audio/wav", filename=path.name)
+
+
+@router.post("/batches/{batch_name}/segments/{segment_id}/review", response_model=ReviewSegment)
+async def submit_segment_review(
+    batch_name: str,
+    segment_id: str,
+    payload: ReviewRequest,
+    review_service: SegmentReviewService = Depends(get_review_service),
+) -> ReviewSegment:
+    try:
+        return review_service.submit_review(batch_name, segment_id, payload.reference)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/batches/{batch_name}/wer-summary", response_model=WerSummary)
+async def get_wer_summary(
+    batch_name: str,
+    review_service: SegmentReviewService = Depends(get_review_service),
+) -> WerSummary:
+    try:
+        return review_service.wer_summary(batch_name)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
