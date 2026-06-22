@@ -1,5 +1,0 @@
-audio_id,video_id,title,source,source_url,audio_file_path,translation_file_path,translation_status,duration_sec,sample_rate,channels,format
-yt_NEELSWb3o8I,NEELSWb3o8I,Nghe gái phú yên nói chuyện ( quá dễ ghét),youtube,https://www.youtube.com/watch?v=NEELSWb3o8I,/data/processed/audio/yt_NEELSWb3o8I.wav,data/processed/translations/yt_NEELSWb3o8I.txt,missing,25.844,16000,1,wav
-yt_s-FQ06W1to4,s-FQ06W1to4,Tâm sự của hotgirl rap tiếng miền trung,youtube,https://www.youtube.com/watch?v=s-FQ06W1to4,/data/processed/audio/yt_s-FQ06W1to4.wav,data/processed/translations/yt_s-FQ06W1to4.txt,missing,366.655,16000,1,wav
-yt_FRyQWqKi1ik,FRyQWqKi1ik,Điểm tuần: Mưa lũ miền Trung - Biến nước mắt thành sức mạnh | VTV24,youtube,https://www.youtube.com/watch?v=FRyQWqKi1ik,/data/processed/audio/yt_FRyQWqKi1ik.wav,data/processed/translations/yt_FRyQWqKi1ik.txt,ready,408.892,16000,1,wav
-yt_W4sUNzFYrmE,W4sUNzFYrmE,Phỏng vấn Thiên Thảo - Zuka Miền Trung,youtube,https://www.youtube.com/watch?v=W4sUNzFYrmE,/data/processed/audio/yt_W4sUNzFYrmE.wav,data/processed/translations/yt_W4sUNzFYrmE.txt,ready,164.235,16000,1,wav

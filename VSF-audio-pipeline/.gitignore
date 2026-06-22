@@ -11,6 +11,8 @@ data/raw/
 data/processed/
 data/labeling/upload/
 data/final/
+data/metadata/
+data/discovery/
 cookies/*
 !cookies/.gitkeep
 *.wav

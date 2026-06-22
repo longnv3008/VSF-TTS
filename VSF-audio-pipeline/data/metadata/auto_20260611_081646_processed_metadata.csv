@@ -1,2 +1,0 @@
-audio_id,video_id,title,source,source_url,audio_file_path,translation_file_path,translation_status,duration_sec,sample_rate,channels,format
-yt_5Jib031Dn9M,5Jib031Dn9M,"Thời tiết ngày 11-6: Bắc Bộ nắng ráo, Nam Bộ có mưa giông rải rác",youtube,https://www.youtube.com/watch?v=5Jib031Dn9M,/data/processed/audio/yt_5Jib031Dn9M.wav,data/processed/translations/yt_5Jib031Dn9M.txt,ready,218.795,16000,1,wav
