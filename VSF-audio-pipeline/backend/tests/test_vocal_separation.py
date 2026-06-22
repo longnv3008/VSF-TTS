@@ -15,9 +15,34 @@ def test_separate_vocals_disabled_returns_rows_unchanged(monkeypatch):
     assert out == rows  # identity passthrough, no torch needed
 
 
+def test_separate_vocals_auto_skips_when_vtt_exists(make_wav, tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "demucs_enabled", True)
+    monkeypatch.setattr(settings, "demucs_mode", "auto")
+    service = AudioPipelineService()
+    events = []
+    monkeypatch.setattr(service, "_notify_url_stage", lambda **kwargs: events.append(kwargs))
+
+    raw = make_wav(seconds=0.5, name="raw.wav")
+    rows = [{
+        "raw_file_path": str(raw),
+        "source_url": "u",
+        "video_id": "v",
+        "subtitle_file_path": "some.vtt",
+    }]
+
+    out = service.separate_vocals(rows)
+
+    assert out[0]["raw_file_path"] == str(raw)
+    assert out[0]["audio_filter_backend"] == "ffmpeg"
+    assert out[0]["audio_filter_reason"] == "auto_skip_has_vtt"
+    assert [event["status"] for event in events] == ["completed"]
+
+
 def test_separate_vocals_rewrites_raw_path_to_vocal(make_wav, tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "demucs_enabled", True)
     service = AudioPipelineService()
+    events = []
+    monkeypatch.setattr(service, "_notify_url_stage", lambda **kwargs: events.append(kwargs))
 
     raw = make_wav(seconds=0.5, name="raw.wav")
     vocal = tmp_path / "vocals.wav"
@@ -36,11 +61,15 @@ def test_separate_vocals_rewrites_raw_path_to_vocal(make_wav, tmp_path, monkeypa
     assert out[0]["raw_file_path"] == str(vocal)        # normalize sẽ hạ 16k vocal
     assert out[0]["original_raw_file_path"] == str(raw)
     assert not raw.exists()                              # raw gốc bị xóa tiết kiệm disk
+    assert [event["status"] for event in events] == ["started", "completed"]
+    assert [event["step"] for event in events] == ["demucs", "demucs"]
 
 
 def test_separate_vocals_falls_back_to_raw_on_failure(make_wav, tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "demucs_enabled", True)
     service = AudioPipelineService()
+    events = []
+    monkeypatch.setattr(service, "_notify_url_stage", lambda **kwargs: events.append(kwargs))
 
     raw = make_wav(seconds=0.5, name="raw.wav")
 
@@ -55,6 +84,7 @@ def test_separate_vocals_falls_back_to_raw_on_failure(make_wav, tmp_path, monkey
     assert out[0]["raw_file_path"] == str(raw)        # fell back to raw, not aborted
     assert "original_raw_file_path" not in out[0]
     assert raw.exists()                                # raw NOT deleted on failure
+    assert [event["status"] for event in events] == ["started", "failed"]
 
 
 def test_separate_vocals_continues_batch_after_one_failure(make_wav, tmp_path, monkeypatch):

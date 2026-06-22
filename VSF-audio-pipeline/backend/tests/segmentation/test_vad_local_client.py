@@ -7,7 +7,7 @@ from app.modules.audio_pipeline.application.segmentation.vad_local_client import
 def _cfg() -> SegmentationConfig:
     return SegmentationConfig(
         chunk_ms=64, threshold=0.7, min_volume=0.6, start_secs=0.1, stop_secs=0.45,
-        sentence_max_sec=12.0, sentence_min_sec=0.3, phrase_gap_sec=0.45,
+        sentence_max_sec=12.0, sentence_min_sec=0.3, phrase_gap_sec=0.45, use_vtt_transcript=True,
         pad_sec=0.1, min_segment_sec=0.3, boundary_slack_sec=0.5, merge_gap_sec=0.5,
         quality_gate_enabled=False,
     )

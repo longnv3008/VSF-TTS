@@ -42,10 +42,12 @@ class SegmentationConfig:
     sentence_max_sec: float
     sentence_min_sec: float
     phrase_gap_sec: float
+    use_vtt_transcript: bool
     pad_sec: float
     min_segment_sec: float
     boundary_slack_sec: float
     merge_gap_sec: float
+    vtt_overlap_sec: float = 0.2
     quality_gate_enabled: bool = False
     quality_gate_min_rms: float = 0.015
     quality_gate_min_peak: float = 0.05

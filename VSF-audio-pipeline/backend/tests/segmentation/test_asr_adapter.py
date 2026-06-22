@@ -43,11 +43,20 @@ def test_decode_params_hardened(tmp_path):
     wav.write_bytes(b"RIFF")
     adapter.transcribe(wav)
     kw = fake.last_kwargs
-    assert kw["beam_size"] == 1
+    assert kw["beam_size"] == 5
     assert kw["temperature"] == 0.0
     assert kw["condition_on_previous_text"] is False
     assert kw["no_speech_threshold"] == 0.6
     assert kw["vad_filter"] is True
+
+
+def test_custom_beam_size_respected(tmp_path):
+    fake = _FakeModel()
+    adapter = FasterWhisperAdapter(model_name="tiny", device="cpu", model=fake, beam_size=3)
+    wav = tmp_path / "seg.wav"
+    wav.write_bytes(b"RIFF")
+    adapter.transcribe(wav)
+    assert fake.last_kwargs["beam_size"] == 3
 
 
 def test_blocklisted_hallucination_dropped(tmp_path):

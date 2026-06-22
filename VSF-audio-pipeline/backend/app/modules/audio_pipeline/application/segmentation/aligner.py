@@ -44,8 +44,14 @@ def align_units_to_vad(
         if overlapping:
             vad_start = min(r.start for r in overlapping)
             vad_end = max(r.end for r in overlapping)
-            start = vad_start if abs(vad_start - unit.start) <= boundary_slack_sec else unit.start
-            end = vad_end if abs(vad_end - unit.end) <= boundary_slack_sec else unit.end
+            # Khi đã có overlap thật, ưu tiên ôm TRỌN phần speech để tránh cụt đầu/cuối.
+            # boundary_slack chỉ còn vai trò giới hạn việc nới quá xa khỏi câu gốc.
+            start = min(unit.start, vad_start)
+            end = max(unit.end, vad_end)
+            if unit.start - start > boundary_slack_sec:
+                start = unit.start - boundary_slack_sec
+            if end - unit.end > boundary_slack_sec:
+                end = unit.end + boundary_slack_sec
             vad_status = "aligned"
         else:
             start, end, vad_status = unit.start, unit.end, "no_overlap"

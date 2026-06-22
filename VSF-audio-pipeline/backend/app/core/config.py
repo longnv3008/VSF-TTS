@@ -64,22 +64,28 @@ class Settings(BaseSettings):
     telegram_log_enabled: bool = Field(default=False, alias="TELEGRAM_LOG_ENABLED")
     telegram_bot_token: str = Field(default="", alias="TELEGRAM_BOT_TOKEN")
     telegram_chat_id: str = Field(default="", alias="TELEGRAM_CHAT_ID")
+    resume_incomplete_jobs_on_startup: bool = Field(
+        default=False,
+        alias="RESUME_INCOMPLETE_JOBS_ON_STARTUP",
+    )
 
     # Cấu hình segment-level pipeline (VAD ONNX nội bộ + cắt câu + ASR fallback).
     vad_model_path: Path = Field(default=Path("../VAD/models/vad/1/vad.onnx"), alias="VAD_MODEL_PATH")
     vad_threshold: float = Field(default=0.7, alias="VAD_THRESHOLD")
     vad_min_volume: float = Field(default=0.6, alias="VAD_MIN_VOLUME")
     vad_start_secs: float = Field(default=0.1, alias="VAD_START_SECS")
-    vad_stop_secs: float = Field(default=0.45, alias="VAD_STOP_SECS")
+    vad_stop_secs: float = Field(default=0.6, alias="VAD_STOP_SECS")
     vad_chunk_ms: int = Field(default=64, alias="VAD_CHUNK_MS")
     segments_dir: Path = Field(default=Path("data/processed/segments"), alias="SEGMENTS_DIR")
-    sentence_max_sec: float = Field(default=12.0, alias="SENTENCE_MAX_SEC")
+    sentence_max_sec: float = Field(default=8.0, alias="SENTENCE_MAX_SEC")
     sentence_min_sec: float = Field(default=0.3, alias="SENTENCE_MIN_SEC")
     phrase_gap_sec: float = Field(default=0.45, alias="PHRASE_GAP_SEC")
-    segment_pad_sec: float = Field(default=0.1, alias="SEGMENT_PAD_SEC")
+    use_vtt_transcript: bool = Field(default=True, alias="USE_VTT_TRANSCRIPT")
+    segment_pad_sec: float = Field(default=0.35, alias="SEGMENT_PAD_SEC")
     segment_min_sec: float = Field(default=0.3, alias="SEGMENT_MIN_SEC")
-    segment_boundary_slack_sec: float = Field(default=0.5, alias="SEGMENT_BOUNDARY_SLACK_SEC")
+    segment_boundary_slack_sec: float = Field(default=0.8, alias="SEGMENT_BOUNDARY_SLACK_SEC")
     segment_merge_gap_sec: float = Field(default=0.5, alias="SEGMENT_MERGE_GAP_SEC")
+    vtt_overlap_sec: float = Field(default=0.2, alias="VTT_OVERLAP_SEC")
     quality_gate_enabled: bool = Field(default=True, alias="QUALITY_GATE_ENABLED")
     quality_gate_min_rms: float = Field(default=0.015, alias="QUALITY_GATE_MIN_RMS")
     quality_gate_min_peak: float = Field(default=0.05, alias="QUALITY_GATE_MIN_PEAK")
@@ -94,6 +100,7 @@ class Settings(BaseSettings):
     )
     asr_model: str = Field(default="large-v3", alias="ASR_MODEL")
     asr_device: str = Field(default="cuda", alias="ASR_DEVICE")
+    asr_beam_size: int = Field(default=5, alias="ASR_BEAM_SIZE")
     # ASR hardening chống ảo giác khoảng lặng (xem FasterWhisperAdapter / text_quality).
     asr_no_speech_threshold: float = Field(default=0.6, alias="ASR_NO_SPEECH_THRESHOLD")
     asr_logprob_min: float = Field(default=-1.0, alias="ASR_LOGPROB_MIN")
@@ -102,6 +109,7 @@ class Settings(BaseSettings):
     # Tách vocal bằng Demucs trước normalize (chạy trên raw, giữ chất lượng tách).
     # Tắt mặc định -> pipeline giữ nguyên hành vi cũ. Command trỏ env riêng có torch.
     demucs_enabled: bool = Field(default=True, alias="DEMUCS_ENABLED")
+    demucs_mode: str = Field(default="auto", alias="DEMUCS_MODE")
     demucs_command: str = Field(default="python -m demucs", alias="DEMUCS_COMMAND")
     demucs_model: str = Field(default="htdemucs", alias="DEMUCS_MODEL")
     demucs_device: str = Field(default="cuda", alias="DEMUCS_DEVICE")
@@ -149,6 +157,13 @@ class Settings(BaseSettings):
     @property
     def resolved_discovery_cursor_file(self) -> Path:
         return self.storage_root / "discovery" / "topic_cursor.json"
+
+    @property
+    def resolved_demucs_mode(self) -> str:
+        if not self.demucs_enabled:
+            return "off"
+        mode = self.demucs_mode.strip().lower()
+        return mode if mode in {"off", "on", "auto"} else "auto"
 
 
 # Tạo singleton settings để mọi nơi trong app dùng cùng một cấu hình.

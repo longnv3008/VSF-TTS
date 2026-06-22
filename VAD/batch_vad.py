@@ -69,6 +69,28 @@ def merge_speech_segments(
     return merged
 
 
+def pad_speech_segments(
+    segments: list[dict],
+    duration: float,
+    pad_secs: float,
+    merge_gap_secs: float,
+    min_speech_secs: float,
+) -> list[dict]:
+    if not segments:
+        return []
+    if pad_secs <= 0.0:
+        return merge_speech_segments(segments, merge_gap_secs, min_speech_secs)
+
+    padded = [
+        {
+            "start": max(0.0, float(segment["start"]) - pad_secs),
+            "end": min(duration, float(segment["end"]) + pad_secs),
+        }
+        for segment in segments
+    ]
+    return merge_speech_segments(padded, merge_gap_secs, min_speech_secs)
+
+
 def _fill_short_mask_gaps(mask: np.ndarray, max_gap_frames: int) -> np.ndarray:
     if max_gap_frames <= 0 or not mask.any():
         return mask
@@ -307,6 +329,13 @@ def run_vad_file(
     if args.refine_boundaries:
         speech = refine_speech_segments(speech, frames, duration, args)
     speech = merge_speech_segments(speech, args.merge_gap_secs, args.min_speech_secs)
+    speech = pad_speech_segments(
+        speech,
+        duration,
+        args.segment_pad_secs,
+        args.merge_gap_secs,
+        args.min_speech_secs,
+    )
     return duration, build_labeled_segments(speech, duration)
 
 
@@ -348,6 +377,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--stop-secs", type=float, default=0.45)
     parser.add_argument("--merge-gap-secs", type=float, default=0.5)
     parser.add_argument("--min-speech-secs", type=float, default=0.08)
+    parser.add_argument("--segment-pad-secs", type=float, default=0.12,
+                        help="Extra padding added to both sides of each final speech segment.")
     parser.add_argument("--refine-boundaries", action="store_true",
                         help="Refine offline segment boundaries with frame-level RMS inside VAD rough segments.")
     parser.add_argument("--refine-energy-db-below-peak", type=float, default=35.0,

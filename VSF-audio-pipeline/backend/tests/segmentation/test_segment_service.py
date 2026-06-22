@@ -6,8 +6,9 @@ import wave
 def _cfg():
     return SegmentationConfig(
         chunk_ms=64, threshold=0.7, min_volume=0.6, start_secs=0.1, stop_secs=0.45,
-        sentence_max_sec=12.0, sentence_min_sec=0.3, phrase_gap_sec=0.45,
+        sentence_max_sec=12.0, sentence_min_sec=0.3, phrase_gap_sec=0.45, use_vtt_transcript=True,
         pad_sec=0.0, min_segment_sec=0.3, boundary_slack_sec=0.5, merge_gap_sec=0.5,
+        vtt_overlap_sec=0.2,
         quality_gate_enabled=False,
     )
 
@@ -31,6 +32,14 @@ VTT = """WEBVTT
 xin chao cac ban.
 """
 
+VTT_TWO_LINES = """WEBVTT
+
+00:00:00.000 --> 00:00:01.000
+xin chao.
+
+00:00:01.100 --> 00:00:02.000
+cac ban.
+"""
 
 def test_vtt_path_produces_segment(make_wav, tmp_path):
     wav = make_wav(seconds=2.0, name="yt_vid.wav")
@@ -48,6 +57,38 @@ def test_vtt_path_produces_segment(make_wav, tmp_path):
     assert rows[0]["segment_id"] == "yt_vid__sent000001"
     assert (tmp_path / "segments" / "b1" / "yt_vid" / "yt_vid__sent000001.wav").exists()
     assert (tmp_path / "segments" / "b1" / "yt_vid" / "yt_vid__sent000001.txt").read_text(encoding="utf-8") == "xin chao cac ban."
+
+
+def test_vtt_path_ignores_vad_boundary_and_keeps_subtitle_timing(make_wav, tmp_path):
+    wav = make_wav(seconds=3.0, name="yt_vid.wav")
+    vtt = tmp_path / "vid__t.vi.vtt"
+    vtt.write_text(VTT, encoding="utf-8")
+    row = {"audio_id": "yt_vid", "video_id": "vid", "title": "t",
+           "source_url": "u", "audio_file_path": str(wav), "subtitle_file_path": str(vtt)}
+    rows = segment_video(
+        row, vad_client=_FakeVad([SpeechRegion(1.5, 2.5)], 3.0), asr_adapter=_FakeAsr(),
+        config=_cfg(), segments_root=tmp_path / "segments", batch_name="b1",
+    )
+    assert len(rows) == 1
+    assert rows[0]["transcript_source"] == "vtt"
+    assert rows[0]["start"] == 0.0
+    assert rows[0]["end"] == 1.0
+    assert rows[0]["vad_status"] == "no_overlap"
+
+
+def test_vtt_segments_get_small_overlap_to_protect_boundaries(make_wav, tmp_path):
+    wav = make_wav(seconds=3.0, name="yt_vid.wav")
+    vtt = tmp_path / "vid__t.vi.vtt"
+    vtt.write_text(VTT_TWO_LINES, encoding="utf-8")
+    row = {"audio_id": "yt_vid", "video_id": "vid", "title": "t",
+           "source_url": "u", "audio_file_path": str(wav), "subtitle_file_path": str(vtt)}
+    rows = segment_video(
+        row, vad_client=_FakeVad([SpeechRegion(0.0, 2.0)], 3.0), asr_adapter=_FakeAsr(),
+        config=_cfg(), segments_root=tmp_path / "segments", batch_name="b1",
+    )
+    assert len(rows) == 2
+    assert rows[0]["end"] > 1.0
+    assert rows[1]["start"] < 1.1
 
 
 BLOCKLIST_VTT = """WEBVTT
@@ -146,7 +187,7 @@ def test_quality_gate_drops_silent_segment_before_asr(make_wav, tmp_path):
 def test_quality_gate_keeps_loud_segment_with_reasonable_text(tmp_path):
     cfg = SegmentationConfig(
         chunk_ms=64, threshold=0.7, min_volume=0.6, start_secs=0.1, stop_secs=0.45,
-        sentence_max_sec=12.0, sentence_min_sec=0.3, phrase_gap_sec=0.45,
+        sentence_max_sec=12.0, sentence_min_sec=0.3, phrase_gap_sec=0.45, use_vtt_transcript=True,
         pad_sec=0.0, min_segment_sec=0.3, boundary_slack_sec=0.5, merge_gap_sec=0.5,
         quality_gate_enabled=True,
     )

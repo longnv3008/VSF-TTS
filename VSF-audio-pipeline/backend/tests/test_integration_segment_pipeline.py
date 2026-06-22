@@ -25,9 +25,11 @@ class _FakeAsr:
 
 def test_end_to_end_vtt_path(make_wav, tmp_path, monkeypatch):
     service = AudioPipelineService()
+    events = []
     monkeypatch.setattr(service, "segments_dir", tmp_path / "segments")
     monkeypatch.setattr(service, "metadata_dir", tmp_path / "metadata")
     monkeypatch.setattr(service, "_build_segment_dependencies", lambda: (_FakeVad(), _FakeAsr()))
+    monkeypatch.setattr(service, "_notify_url_stage", lambda **kwargs: events.append(kwargs))
 
     wav = make_wav(seconds=2.0, name="yt_vid.wav")
     vtt = tmp_path / "vid__t.vi.vtt"
@@ -47,3 +49,6 @@ def test_end_to_end_vtt_path(make_wav, tmp_path, monkeypatch):
     assert all(r["transcript_source"] == "vtt" for r in rows)
     for r in rows:
         assert (tmp_path / "segments" / "b1" / "yt_vid" / f"{r['segment_id']}.wav").exists()
+    assert ("vad", "started") in {(event["step"], event["status"]) for event in events}
+    assert ("vad", "completed") in {(event["step"], event["status"]) for event in events}
+    assert ("segment_output", "completed") in {(event["step"], event["status"]) for event in events}

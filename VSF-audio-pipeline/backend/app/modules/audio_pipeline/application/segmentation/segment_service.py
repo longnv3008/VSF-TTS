@@ -3,7 +3,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from pathlib import Path
 from time import perf_counter
-from typing import Iterator
+from typing import Callable, Iterator
 
 from app.modules.audio_pipeline.application.segmentation.aligner import (
     align_units_to_vad,
@@ -60,6 +60,31 @@ def _merge_quality(
     return SegmentQualityDecision(keep=keep, label=label, score=score, reasons=reasons)
 
 
+def _apply_vtt_overlap(
+    segments: list[AlignedSegment],
+    *,
+    duration: float,
+    overlap_sec: float,
+    min_segment_sec: float,
+) -> list[AlignedSegment]:
+    if overlap_sec <= 0 or len(segments) < 2:
+        return segments
+    adjusted: list[AlignedSegment] = []
+    for index, seg in enumerate(segments):
+        start = seg.start
+        end = seg.end
+        if index > 0:
+            start = max(0.0, start - overlap_sec)
+        if index < len(segments) - 1:
+            end = min(duration, end + overlap_sec)
+        if end - start < min_segment_sec:
+            continue
+        adjusted.append(
+            AlignedSegment(start, end, seg.text, seg.transcript_status, seg.vad_status)
+        )
+    return adjusted
+
+
 def _has_usable_vtt(subtitle_path: str) -> bool:
     if not subtitle_path:
         return False
@@ -76,6 +101,7 @@ def segment_video(
     segments_root: Path,
     batch_name: str,
     timing_sink: object | None = None,
+    stage_notifier: Callable[..., None] | None = None,
 ) -> list[dict]:
     audio_id = processed_row["audio_id"]
     video_id = processed_row.get("video_id", "")
@@ -84,10 +110,19 @@ def segment_video(
 
     sink = timing_sink or _NULL_SINK
 
+    if stage_notifier:
+        stage_notifier(stage="vad", status="started")
     with sink.span("vad"):
         duration, regions = vad_client.detect_regions(wav_path)
+    if stage_notifier:
+        stage_notifier(
+            stage="vad",
+            status="completed",
+            region_count=len(regions),
+            duration_sec=round(duration, 3),
+        )
 
-    use_vtt = _has_usable_vtt(subtitle_path)
+    use_vtt = config.use_vtt_transcript and _has_usable_vtt(subtitle_path)
     transcript_source = "vtt"
     if use_vtt:
         cues = parse_youtube_vtt(Path(subtitle_path))
@@ -98,7 +133,13 @@ def segment_video(
             units, regions, duration, config.pad_sec, config.merge_gap_sec,
             config.min_segment_sec, config.boundary_slack_sec,
         )
-        if not aligned:  # có VTT nhưng không ráp được -> rơi về VAD-only + ASR
+        aligned = _apply_vtt_overlap(
+            aligned,
+            duration=duration,
+            overlap_sec=config.vtt_overlap_sec,
+            min_segment_sec=config.min_segment_sec,
+        )
+        if not aligned:  # có VTT nhưng không tạo được unit hợp lệ -> rơi về VAD-only + ASR
             use_vtt = False
 
     if not use_vtt:

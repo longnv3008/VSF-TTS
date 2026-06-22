@@ -195,6 +195,7 @@ def make_vad_args(args: argparse.Namespace) -> argparse.Namespace:
         stop_secs=args.stop_secs,
         merge_gap_secs=args.merge_gap_secs,
         min_speech_secs=args.min_speech_secs,
+        segment_pad_secs=args.segment_pad_secs,
         refine_boundaries=args.refine_boundaries,
         refine_energy_db_below_peak=args.refine_energy_db_below_peak,
         refine_energy_min_rms=args.refine_energy_min_rms,
@@ -335,6 +336,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--stop-secs", type=float, default=0.45)
     parser.add_argument("--merge-gap-secs", type=float, default=0.5)
     parser.add_argument("--min-speech-secs", type=float, default=0.08)
+    parser.add_argument("--segment-pad-secs", type=float, default=0.12)
     parser.add_argument("--refine-boundaries", action="store_true")
     parser.add_argument("--refine-energy-db-below-peak", type=float, default=35.0)
     parser.add_argument("--refine-energy-min-rms", type=float, default=1e-4)

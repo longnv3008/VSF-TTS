@@ -16,6 +16,24 @@ def test_align_refines_boundary_when_close():
     assert segs[0].text == "xin chao"
 
 
+def test_align_extends_to_cover_speech_even_when_farther_than_unit():
+    units = [SentenceUnit(1.0, 2.0, "xin chao")]
+    regions = [SpeechRegion(0.3, 2.6)]
+    segs = align_units_to_vad(
+        units,
+        regions,
+        duration=10.0,
+        pad_sec=0.0,
+        merge_gap_sec=0.5,
+        min_segment_sec=0.3,
+        boundary_slack_sec=0.8,
+    )
+    assert len(segs) == 1
+    assert segs[0].vad_status == "aligned"
+    assert segs[0].start == 0.3
+    assert segs[0].end == 2.6
+
+
 def test_align_no_overlap_keeps_unit_bounds():
     units = [SentenceUnit(1.0, 2.0, "xin chao")]
     regions = [SpeechRegion(5.0, 6.0)]
