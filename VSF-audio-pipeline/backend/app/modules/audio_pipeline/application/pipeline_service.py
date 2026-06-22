@@ -1317,6 +1317,26 @@ class AudioPipelineService:
                                     cause=FileNotFoundError(f"Downloaded audio missing after postprocess: {filepath}"),
                                 )
                             subtitle_file = self._resolve_subtitle_file(raw_file)
+                            if subtitle_file is None or subtitle_file.suffix.lower() != ".vtt":
+                                video_id = str(entry.get("id", "")).strip()
+                                self._log_crawl_warning("subtitle_missing", url=url, video_id=video_id)
+                                self._notify_telegram(
+                                    "YouTube subtitle missing",
+                                    job_id=job_id,
+                                    batch_name=batch_name,
+                                    url=url,
+                                    video_id=video_id,
+                                    step="crawl_audio",
+                                    status="skipped",
+                                    reason="missing_vtt",
+                                )
+                                raise SkipUrlError(
+                                    step="crawl_audio",
+                                    failed_url=url,
+                                    cause=FileNotFoundError(
+                                        f"No .vtt subtitle downloaded for video_id={video_id or 'unknown'}",
+                                    ),
+                                )
 
                             row = {
                                 "video_id": str(entry.get("id", "")).strip(),
@@ -1329,6 +1349,8 @@ class AudioPipelineService:
                             self._log_crawl("saved", url=url, video_id=row["video_id"])
                             rows.append(row)
                         except BatchAbortError:
+                            raise
+                        except SkipUrlError:
                             raise
                         except Exception as exc:
                             logger.exception("step=crawl_audio | url=%s | error=%s", url, format_function_error("crawl_youtube", exc))
@@ -1343,6 +1365,9 @@ class AudioPipelineService:
             logger.info("step=crawl_audio")
             return rows
         except BatchAbortError:
+            self._note_crawl_finished()
+            raise
+        except SkipUrlError:
             self._note_crawl_finished()
             raise
         except Exception as exc:
