@@ -15,31 +15,77 @@ def test_separate_vocals_disabled_returns_rows_unchanged(monkeypatch):
     assert out == rows  # identity passthrough, no torch needed
 
 
-def test_separate_vocals_auto_skips_when_vtt_exists(make_wav, tmp_path, monkeypatch):
+def test_separate_vocals_auto_skips_when_clean(make_wav, tmp_path, monkeypatch):
+    # auto: noise floor thấp (sạch) -> bỏ Demucs, chỉ ffmpeg.
     monkeypatch.setattr(settings, "demucs_enabled", True)
     monkeypatch.setattr(settings, "demucs_mode", "auto")
+    monkeypatch.setattr(settings, "demucs_noise_floor_db", -50.0)
+    monkeypatch.setattr(pipeline_service, "measure_noise_floor_db", lambda *a, **k: -68.0)
     service = AudioPipelineService()
     events = []
     monkeypatch.setattr(service, "_notify_url_stage", lambda **kwargs: events.append(kwargs))
 
     raw = make_wav(seconds=0.5, name="raw.wav")
-    rows = [{
-        "raw_file_path": str(raw),
-        "source_url": "u",
-        "video_id": "v",
-        "subtitle_file_path": "some.vtt",
-    }]
+    rows = [{"raw_file_path": str(raw), "source_url": "u", "video_id": "v"}]
 
     out = service.separate_vocals(rows)
 
     assert out[0]["raw_file_path"] == str(raw)
     assert out[0]["audio_filter_backend"] == "ffmpeg"
-    assert out[0]["audio_filter_reason"] == "auto_skip_has_vtt"
+    assert out[0]["audio_filter_reason"].startswith("auto_noise_low")
     assert [event["status"] for event in events] == ["completed"]
+
+
+def test_separate_vocals_auto_uses_demucs_when_noisy(make_wav, tmp_path, monkeypatch):
+    # auto: noise floor cao (nhiễu) -> route sang Demucs.
+    monkeypatch.setattr(settings, "demucs_enabled", True)
+    monkeypatch.setattr(settings, "demucs_mode", "auto")
+    monkeypatch.setattr(settings, "demucs_noise_floor_db", -50.0)
+    monkeypatch.setattr(pipeline_service, "measure_noise_floor_db", lambda *a, **k: -38.0)
+    service = AudioPipelineService()
+    events = []
+    monkeypatch.setattr(service, "_notify_url_stage", lambda **kwargs: events.append(kwargs))
+
+    raw = make_wav(seconds=0.5, name="raw.wav")
+    vocal = tmp_path / "vocals.wav"
+    vocal.write_bytes(raw.read_bytes())
+    monkeypatch.setattr(
+        pipeline_service, "demucs_separate_vocals",
+        lambda input_path, out_dir, *, command, model, device: vocal,
+    )
+
+    rows = [{"raw_file_path": str(raw), "source_url": "u", "video_id": "v"}]
+    out = service.separate_vocals(rows)
+
+    assert out[0]["raw_file_path"] == str(vocal)
+    assert out[0]["audio_filter_backend"] == "demucs"
+    assert out[0]["audio_filter_reason"].startswith("auto_noise_high")
+
+
+def test_separate_vocals_auto_unknown_falls_back_to_ffmpeg(make_wav, tmp_path, monkeypatch):
+    # probe lỗi (vd ffmpeg thiếu) -> fallback an toàn: không Demucs.
+    monkeypatch.setattr(settings, "demucs_enabled", True)
+    monkeypatch.setattr(settings, "demucs_mode", "auto")
+
+    def boom(*a, **k):
+        raise RuntimeError("no ffmpeg")
+
+    monkeypatch.setattr(pipeline_service, "measure_noise_floor_db", boom)
+    service = AudioPipelineService()
+    monkeypatch.setattr(service, "_notify_url_stage", lambda **kwargs: None)
+
+    raw = make_wav(seconds=0.5, name="raw.wav")
+    rows = [{"raw_file_path": str(raw), "source_url": "u", "video_id": "v"}]
+
+    out = service.separate_vocals(rows)
+
+    assert out[0]["audio_filter_backend"] == "ffmpeg"
+    assert out[0]["audio_filter_reason"] == "auto_noise_unknown"
 
 
 def test_separate_vocals_rewrites_raw_path_to_vocal(make_wav, tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "demucs_enabled", True)
+    monkeypatch.setattr(settings, "demucs_mode", "on")
     service = AudioPipelineService()
     events = []
     monkeypatch.setattr(service, "_notify_url_stage", lambda **kwargs: events.append(kwargs))
@@ -67,6 +113,7 @@ def test_separate_vocals_rewrites_raw_path_to_vocal(make_wav, tmp_path, monkeypa
 
 def test_separate_vocals_falls_back_to_raw_on_failure(make_wav, tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "demucs_enabled", True)
+    monkeypatch.setattr(settings, "demucs_mode", "on")
     service = AudioPipelineService()
     events = []
     monkeypatch.setattr(service, "_notify_url_stage", lambda **kwargs: events.append(kwargs))
@@ -90,6 +137,7 @@ def test_separate_vocals_falls_back_to_raw_on_failure(make_wav, tmp_path, monkey
 def test_separate_vocals_continues_batch_after_one_failure(make_wav, tmp_path, monkeypatch):
     # "Never abort batch": a failing row falls back to raw, the next row still separates.
     monkeypatch.setattr(settings, "demucs_enabled", True)
+    monkeypatch.setattr(settings, "demucs_mode", "on")
     service = AudioPipelineService()
 
     bad = make_wav(seconds=0.5, name="bad.wav")

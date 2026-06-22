@@ -20,6 +20,7 @@ from app.modules.audio_pipeline.application.segmentation.segment_service import 
 from app.modules.audio_pipeline.application.separation.demucs_separator import (
     separate_vocals as demucs_separate_vocals,
 )
+from app.modules.audio_pipeline.application.separation.noise_probe import measure_noise_floor_db
 from app.modules.audio_pipeline.application.segmentation.types import SegmentationConfig
 from app.modules.audio_pipeline.application.segmentation.vad_local_client import OnnxVadClient
 from app.modules.audio_pipeline.application.stage_timing import (
@@ -270,14 +271,20 @@ class AudioPipelineService:
     @staticmethod
     def _should_use_demucs_for_row(row: dict[str, str]) -> tuple[bool, str]:
         mode = settings.resolved_demucs_mode
-        has_vtt = bool((row.get("subtitle_file_path") or "").strip())
         if mode == "off":
             return False, "demucs_mode=off"
         if mode == "on":
             return True, "demucs_mode=on"
-        if has_vtt:
-            return False, "auto_skip_has_vtt"
-        return True, "auto_use_for_asr"
+        # auto: đo noise floor của raw -> nhiễu cao thì Demucs, sạch thì chỉ ffmpeg.
+        raw_path = (row.get("raw_file_path") or "").strip()
+        try:
+            floor_db = measure_noise_floor_db(Path(raw_path))
+        except Exception as exc:
+            logger.warning("step=noise_probe | path=%s | error=%s", raw_path, exc)
+            return False, "auto_noise_unknown"
+        if floor_db >= settings.demucs_noise_floor_db:
+            return True, f"auto_noise_high({floor_db:.1f}dB)"
+        return False, f"auto_noise_low({floor_db:.1f}dB)"
 
     @staticmethod
     def _log_crawl(event: str, **context: Any) -> None:

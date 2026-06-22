@@ -119,6 +119,9 @@ class Settings(BaseSettings):
     demucs_model: str = Field(default="htdemucs", alias="DEMUCS_MODEL")
     demucs_device: str = Field(default="cuda", alias="DEMUCS_DEVICE")
     separated_audio_dir: Path = Field(default=Path("data/processed/separated"), alias="DEMUCS_SEPARATED_DIR")
+    # auto mode: noise floor (dB) của raw >= ngưỡng -> file nhiễu -> Demucs; thấp hơn -> ffmpeg.
+    # -50 dB là điểm khởi đầu (tune để ~20% rơi vào Demucs trên data thực).
+    demucs_noise_floor_db: float = Field(default=-50.0, alias="DEMUCS_NOISE_FLOOR_DB")
 
     @property
     def resolved_database_url(self) -> str:
