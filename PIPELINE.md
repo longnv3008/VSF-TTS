@@ -24,7 +24,10 @@ python scripts\end_to_end_pipeline.py `
 ```
 
 The script accepts `.wav`, `.mp3`, `.m4a`, `.aac`, `.flac`, `.ogg`, `.opus`, `.webm`, `.mp4`, and `.mkv`.
-Every input is cleaned into mono 16 kHz 16-bit PCM WAV before VAD.
+Every input is cleaned into mono 16 kHz 16-bit PCM WAV before VAD. Cleaning also
+applies EBU R128 loudness normalization (`-af loudnorm`, default on; toggle with
+`--loudnorm/--no-loudnorm`). With loudnorm on, even already-mono-16k WAV inputs are
+re-encoded (the fast copy shortcut is skipped) so levels are normalized.
 
 ## Demucs vocal separation (on by default)
 
@@ -133,6 +136,26 @@ raw fallback when unavailable). The wrapper probes once and forwards the decisio
 to the repo: it sets `DEMUCS_ENABLED` and runs Demucs between crawl and normalize.
 Use `--no-demucs` to skip it. `--demucs-cmd/--demucs-model/--demucs-device` still
 apply; point `--demucs-cmd` at a torch-enabled env.
+
+In `auto` mode (`DEMUCS_MODE=auto`, the default), the backend routes each file by
+its measured noise floor instead of always separating: it runs `ffmpeg astats` on
+the raw file and sends only noisy files (noise floor ≥ `DEMUCS_NOISE_FLOOR_DB`,
+default `-50` dB) through Demucs; clean files go straight to ffmpeg. `DEMUCS_MODE=on`
+forces Demucs for everything, `off` disables it. A failed probe (e.g. ffmpeg
+missing) falls back safely to ffmpeg-only.
+
+### Subtitles, labels, and the WER gate
+
+Labels come only from YouTube subtitles. A video **without a usable `.vtt`
+subtitle is skipped** — there is no ASR fallback that invents transcripts. VTT
+captions are aligned to VAD speech regions and cleaned (blocklist/promo filtering +
+VLSP normalization).
+
+faster-whisper ASR is retained solely as an optional **WER gate** (off by default,
+`WER_GATE_ENABLED`): when on, each kept segment is transcribed and compared against
+its VTT text; segments with WER above `WER_GATE_MAX` (default `0.05`) are flagged
+`needs_review` so misaligned captions can be caught. The canonical offline WER
+report still lives in `eval/wer/`.
 
 Outputs:
 

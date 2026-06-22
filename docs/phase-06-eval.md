@@ -11,6 +11,19 @@ pipeline output: labels.csv (cột text = transcript)
 
 Đây là component **standalone** — không phụ thuộc Phase 0–4. Dùng để đo chất lượng transcript sau khi pipeline đã chạy xong.
 
+## In-pipeline WER gate (ASR vs VTT) — khác `score.py`
+
+Tách biệt với offline `score.py` ở trên. WER gate là **QC trong pipeline**, không phải nguồn
+label:
+
+- Mặc định **tắt** (`WER_GATE_ENABLED`). Bật → mỗi segment giữ lại được transcribe bằng
+  faster-whisper ASR, so với text VTT của nó.
+- WER > `WER_GATE_MAX` (mặc định `0.05`) → flag `needs_review` (giữ nguyên text, không xóa).
+- Token-WER tự chứa trong `wer_gate.py` (không phụ thuộc `eval/wer/`).
+- Mục đích: bắt caption VTT lệch / sai align — **không** sinh hay sửa label.
+
+Báo cáo WER chính thức (doc/segment-level) vẫn nằm ở `eval/wer/` (bên dưới).
+
 ## Thư mục
 
 ```
@@ -33,7 +46,11 @@ eval/wer/
 |---|---|---|
 | `GGh0dfj2zfY` | VTT subtitle | Kimmese - Hương Ngọc Lan |
 | `GjSi4OxJORY` | VTT subtitle | Kimmese - Loving You Sunny |
-| `i724lraI93s` | ASR | BỐN CHỮ LẮM - Trúc Nhân |
+| `i724lraI93s` | ASR (lịch sử) | BỐN CHỮ LẮM - Trúc Nhân |
+
+> [!NOTE]
+> `i724` cột "ASR" là di sản: ASR **không còn** feed label vào pipeline (Phase 4 chỉ
+> nhận VTT). Giữ làm eval target lịch sử + reference cho WER gate.
 
 ## Quy trình
 

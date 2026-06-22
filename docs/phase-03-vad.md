@@ -14,6 +14,11 @@ Hai use case:
 1. **Offline batch** (`VAD/batch_vad.py`) — dùng trong pipeline, không cần Triton
 2. **Real-time streaming** (`VAD/models/vad/` + Triton gRPC) — production turn detection
 
+> [!NOTE]
+> VAD engine **thay được** qua seam: Protocol `VadClient` (`segment_service.py:30`,
+> "giao diện tối thiểu") + impl cụ thể `vad_local_client.py`. Segmentation phụ thuộc
+> interface, nên batch / Triton / VAD khác đều cắm thay được.
+
 ## Model
 
 - **Silero VAD v6 ONNX** — `VAD/models/vad/1/vad.onnx`

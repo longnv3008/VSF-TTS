@@ -40,7 +40,8 @@ User say: "stop caveman", "normal mode" → deactivate.
 
 This repo: Vietnamese TTS data pipeline. VAD, audio segmentation, YouTube crawl → clean WAV → labels.
 Key tools: `scripts/end_to_end_pipeline.py`, `VAD/batch_vad.py`, `scripts/run_vsf_github_to_labels.py`.
-Key params: threshold, min_volume, start_secs, stop_secs, merge_gap_secs, min_speech_secs.
+Key params: threshold, min_volume, start_secs, stop_secs, merge_gap_secs, min_speech_secs, loudnorm (clean), DEMUCS_MODE/DEMUCS_NOISE_FLOOR_DB (separation routing), WER_GATE_ENABLED/WER_GATE_MAX.
+Labels: only from VTT subtitles — no ASR transcript fallback (no VTT → video skipped). ASR kept only as optional WER gate (ASR vs VTT, off by default).
 
 ---
 

@@ -49,6 +49,10 @@ pipeline_runs/<batch>/github_runtime/
 
 → Output `processed/audio/*.wav` được feed vào Phase 1 (Demucs) hoặc Phase 2 (Clean) nếu bỏ Demucs.
 
+> [!IMPORTANT]
+> Mỗi video cần `.vtt` subtitle để ra label. Video **không có `.vtt` usable → bị skip**.
+> Không còn ASR fallback sinh transcript (xem Phase 4 / Phase 6).
+
 ## Bỏ qua crawl (audio đã có sẵn)
 
 Nếu audio đã download hoặc tự có:
@@ -74,7 +78,7 @@ python scripts\end_to_end_pipeline.py `
 | `ModuleNotFoundError` crawler | Chưa setup `VSF-audio-pipeline` | `uv sync --project VSF-audio-pipeline/backend` |
 | Download fail / 403 | Video gated hoặc cookies hết hạn | Cập nhật `cookies/youtube.txt` |
 | `processed/audio/` rỗng | Crawler chạy nhưng không output | Xem logs trong `github_summary.json` |
-| Subtitle thiếu `.vtt` | Video không có auto-caption | Chạy với `--no-vtt`, dùng ASR fallback |
+| Subtitle thiếu `.vtt` | Video không có auto-caption | Video bị **skip** (không có ASR fallback). Cấp subtitle hoặc chấp nhận bỏ video |
 
 ## Tham số quan trọng
 
