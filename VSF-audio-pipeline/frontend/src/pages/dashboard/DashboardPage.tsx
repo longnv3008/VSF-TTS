@@ -9,6 +9,7 @@ import JobSummaryCards from "../../features/jobs/components/JobSummaryCards";
 import HistoryCompareView from "../../features/timings/components/HistoryCompareView";
 import StageDurationBars from "../../features/timings/components/StageDurationBars";
 import VideoBreakdownTable from "../../features/timings/components/VideoBreakdownTable";
+import ReviewPanel from "../../features/review/components/ReviewPanel";
 
 function upsertJob(jobs: Job[], nextJob: Job): Job[] {
   const nextJobs = [...jobs];
@@ -39,6 +40,7 @@ export default function DashboardPage() {
   const [submitting, setSubmitting] = useState(false);
   const [retryingJobId, setRetryingJobId] = useState<number | null>(null);
   const [selectedBatchId, setSelectedBatchId] = useState<number | null>(null);
+  const [reviewBatchName, setReviewBatchName] = useState<string | null>(null);
   const [msgApi, contextHolder] = message.useMessage();
 
   async function loadJobs() {
@@ -80,6 +82,13 @@ export default function DashboardPage() {
       if (!seen.has(job.batch_id)) seen.set(job.batch_id, job.batch_name);
     }
     return [...seen.entries()].map(([id, name]) => ({ value: id, label: `#${id} · ${name}` }));
+  }, [jobs]);
+
+  // Review API key theo batch_name (không phải id).
+  const reviewBatchOptions = useMemo(() => {
+    const names = new Set<string>();
+    for (const job of jobs) names.add(job.batch_name);
+    return [...names].map((name) => ({ value: name, label: name }));
   }, [jobs]);
 
   async function handleCreateJob(values: CreateJobValues) {
@@ -182,6 +191,23 @@ export default function DashboardPage() {
             ),
           },
           { key: "history", label: "Lịch sử / So sánh", children: <HistoryCompareView /> },
+          {
+            key: "review",
+            label: "Review WER",
+            children: (
+              <div>
+                <Select
+                  style={{ minWidth: 240, marginBottom: 12 }}
+                  placeholder="Chọn batch (tên)"
+                  options={reviewBatchOptions}
+                  value={reviewBatchName ?? undefined}
+                  onChange={(value) => setReviewBatchName(value)}
+                  allowClear
+                />
+                <ReviewPanel batchName={reviewBatchName} />
+              </div>
+            ),
+          },
         ]}
       />
     </Space>
