@@ -40,6 +40,10 @@ duration      : float (seconds)
 
 ### Schema labels với transcript (YouTube + VTT pipeline)
 
+> [!IMPORTANT]
+> Text label **chỉ** lấy từ VTT subtitle (align với VAD region). Video không có `.vtt`
+> usable → **skip**, không sinh label. Không còn ASR fallback sinh transcript.
+
 Khi dùng `scripts/segment_youtube_audio_with_vad_transcript.py`:
 ```
 audio_id, video_id, segment_id, segment_file, transcript_file,
@@ -93,7 +97,7 @@ Script này:
 | `segments/` rỗng | VAD trả về 0 regions | Xem Phase 3 — điều chỉnh threshold |
 | Segment quá ngắn / nhiều quá | `min_speech_secs` quá thấp | Tăng `--min-speech-secs 0.5` |
 | Segment bị cắt sai biên | boundary refinement | `--refine-boundaries` + điều chỉnh `--refine-*` |
-| `labels.csv` thiếu cột `text` | Dùng pipeline basic (không có VTT) | Dùng `segment_youtube_audio_with_vad_transcript.py` |
+| `labels.csv` thiếu cột `text` | Dùng pipeline basic (không có VTT) | Dùng `segment_youtube_audio_with_vad_transcript.py` (text nguồn duy nhất = VTT; không có ASR điền thay) |
 | VTT parse sai, transcript lộn xộn | YouTube caption duplicate/overlap | Xem parser trong `segment_youtube_audio_with_vad_transcript.py` |
 
 ## Files liên quan

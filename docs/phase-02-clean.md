@@ -4,11 +4,14 @@
 
 ```
 vocals.wav (native SR, từ Demucs)
-  hoặc raw audio (nếu --no-demucs)
-  → ffmpeg: mono, 16kHz, 16-bit PCM WAV
+  hoặc raw audio (nếu --no-demucs / file sạch)
+  → ffmpeg: loudnorm (EBU R128) + mono, 16kHz, 16-bit PCM WAV
   → clean_wav/*.wav
   → Phase 3 (VAD)
 ```
+
+Clean **không chỉ đổi format** mà còn chuẩn hóa âm lượng bằng filter `loudnorm`
+(EBU R128), để các segment có level đồng đều — tốt cho TTS training.
 
 ## Chuẩn đầu ra bắt buộc
 

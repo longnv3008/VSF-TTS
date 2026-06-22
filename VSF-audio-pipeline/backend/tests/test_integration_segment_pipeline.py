@@ -1,7 +1,20 @@
 import csv
+import wave
+from pathlib import Path
 
 from app.modules.audio_pipeline.application.pipeline_service import AudioPipelineService
 from app.modules.audio_pipeline.application.segmentation.types import SpeechRegion
+
+
+def _loud_wav(path: Path, seconds: float = 2.0, sample_rate: int = 16000) -> Path:
+    # Quality gate bật mặc định -> cần audio đủ to để VTT text không bị drop.
+    frames = int(seconds * sample_rate)
+    with wave.open(str(path), "wb") as writer:
+        writer.setnchannels(1)
+        writer.setsampwidth(2)
+        writer.setframerate(sample_rate)
+        writer.writeframes(b"\x80\x0c" * frames)
+    return path
 
 VTT = """WEBVTT
 
@@ -31,7 +44,7 @@ def test_end_to_end_vtt_path(make_wav, tmp_path, monkeypatch):
     monkeypatch.setattr(service, "_build_segment_dependencies", lambda: (_FakeVad(), _FakeAsr()))
     monkeypatch.setattr(service, "_notify_url_stage", lambda **kwargs: events.append(kwargs))
 
-    wav = make_wav(seconds=2.0, name="yt_vid.wav")
+    wav = _loud_wav(tmp_path / "yt_vid.wav", seconds=2.0)
     vtt = tmp_path / "vid__t.vi.vtt"
     vtt.write_text(VTT, encoding="utf-8")
     processed_rows = [{

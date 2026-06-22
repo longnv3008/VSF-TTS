@@ -33,6 +33,7 @@ sys.path.insert(0, str(VAD_DIR))
 
 from batch_vad import MODEL_DIR, VADModel, run_vad_file  # noqa: E402
 from demucs_env import demucs_available, resolve_demucs_cmd, split_command  # noqa: E402
+from _pipeline_common import build_ffmpeg_cmd, cut_wav_segment, make_vad_args  # noqa: E402
 
 
 AUDIO_EXTENSIONS = {
@@ -84,25 +85,11 @@ def wav_is_clean(path: Path, sample_rate: int) -> bool:
         return False
 
 
-def convert_with_ffmpeg(src: Path, dst: Path, sample_rate: int, ffmpeg_bin: str) -> None:
+def convert_with_ffmpeg(
+    src: Path, dst: Path, sample_rate: int, ffmpeg_bin: str, loudnorm: bool = False
+) -> None:
     dst.parent.mkdir(parents=True, exist_ok=True)
-    cmd = [
-        ffmpeg_bin,
-        "-hide_banner",
-        "-loglevel",
-        "error",
-        "-y",
-        "-i",
-        str(src),
-        "-vn",
-        "-ac",
-        "1",
-        "-ar",
-        str(sample_rate),
-        "-sample_fmt",
-        "s16",
-        str(dst),
-    ]
+    cmd = build_ffmpeg_cmd(src, dst, sample_rate, ffmpeg_bin, loudnorm=loudnorm)
     subprocess.run(cmd, check=True)
 
 
@@ -164,12 +151,17 @@ def clean_audio_files(args: argparse.Namespace, vocal_map: dict[Path, Path] | No
         dst = args.clean_dir / stable_audio_name(src, args.raw_dir)
         if dst.exists() and not args.overwrite:
             status = "cached"
-        elif source_audio.suffix.lower() == ".wav" and wav_is_clean(source_audio, args.sample_rate):
+        elif (
+            not args.loudnorm
+            and source_audio.suffix.lower() == ".wav"
+            and wav_is_clean(source_audio, args.sample_rate)
+        ):
+            # Copy nhanh chỉ khi không cần loudnorm; loudnorm bắt buộc re-encode.
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source_audio, dst)
             status = "copied"
         else:
-            convert_with_ffmpeg(source_audio, dst, args.sample_rate, args.ffmpeg)
+            convert_with_ffmpeg(source_audio, dst, args.sample_rate, args.ffmpeg, loudnorm=args.loudnorm)
             status = "converted"
 
         if not wav_is_clean(dst, args.sample_rate):
@@ -180,45 +172,6 @@ def clean_audio_files(args: argparse.Namespace, vocal_map: dict[Path, Path] | No
 
     return cleaned
 
-
-def make_vad_args(args: argparse.Namespace) -> argparse.Namespace:
-    return argparse.Namespace(
-        sample_rate=args.sample_rate,
-        chunk_ms=args.chunk_ms,
-        model_chunk_ms=args.model_chunk_ms,
-        context_ms=args.context_ms,
-        reset_duration=args.reset_duration,
-        threshold=args.threshold,
-        negative_threshold=args.negative_threshold,
-        min_volume=args.min_volume,
-        start_secs=args.start_secs,
-        stop_secs=args.stop_secs,
-        merge_gap_secs=args.merge_gap_secs,
-        min_speech_secs=args.min_speech_secs,
-        segment_pad_secs=args.segment_pad_secs,
-        refine_boundaries=args.refine_boundaries,
-        refine_energy_db_below_peak=args.refine_energy_db_below_peak,
-        refine_energy_min_rms=args.refine_energy_min_rms,
-        refine_search_pad_ms=args.refine_search_pad_ms,
-        refine_pad_ms=args.refine_pad_ms,
-        refine_min_speech_ms=args.refine_min_speech_ms,
-        refine_max_gap_ms=args.refine_max_gap_ms,
-    )
-
-
-def cut_wav_segment(src: Path, dst: Path, start_sec: float, end_sec: float) -> None:
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    with wave.open(str(src), "rb") as reader:
-        params = reader.getparams()
-        sample_rate = reader.getframerate()
-        start_frame = max(0, int(round(start_sec * sample_rate)))
-        end_frame = max(start_frame, int(round(end_sec * sample_rate)))
-        reader.setpos(min(start_frame, reader.getnframes()))
-        frames = reader.readframes(max(0, min(end_frame, reader.getnframes()) - start_frame))
-
-    with wave.open(str(dst), "wb") as writer:
-        writer.setparams(params)
-        writer.writeframes(frames)
 
 
 def manifest_path(path: Path) -> str:
@@ -306,6 +259,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--crawler-cmd", default="", help="Optional external crawler command.")
     parser.add_argument("--crawler-cwd", type=Path, default=PROJECT_ROOT)
     parser.add_argument("--ffmpeg", default="ffmpeg")
+    parser.add_argument(
+        "--loudnorm",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Chuẩn hóa âm lượng EBU R128 khi clean (on by default; --no-loudnorm để chỉ đổi format).",
+    )
     parser.add_argument("--overwrite", action="store_true")
 
     parser.add_argument(

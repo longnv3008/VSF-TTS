@@ -9,7 +9,21 @@
       "PowerShell($env:UV_PROJECT_ENVIRONMENT = \"$env:TEMP\\\\vsf-backend-venv\"; uv run --directory external_repos/VSF-audio-pipeline/backend pytest 2>&1 | Select-String -Pattern \"passed|failed|error\")",
       "PowerShell(python --version; Write-Output \"---\"; python -c \"import sys; print\\(sys.executable\\)\"; Write-Output \"---disk---\"; \\(Get-PSDrive E | Select-Object Used,Free | Format-List | Out-String\\).Trim\\(\\))",
       "PowerShell($dst = \"E:\\\\VSF\\\\TTS\\\\pipeline_runs\\\\demucs_e2e\\\\raw\"; New-Item -ItemType Directory -Force -Path $dst | Out-Null; Copy-Item \"E:\\\\VSF\\\\TTS\\\\tmp\\\\vfva-ba-oov-117-org-1.wav\" $dst; Copy-Item \"E:\\\\VSF\\\\TTS\\\\tmp\\\\vfva-ba-oov-118-org-1.wav\" $dst; Get-ChildItem $dst | ForEach-Object { \"{0}  {1:N0} bytes\" -f $_.Name, $_.Length })",
-      "PowerShell(& E:\\\\VSF\\\\TTS\\\\.venv-demucs\\\\Scripts\\\\python.exe -m demucs -h 2>&1 | Select-Object -First 3; Write-Output \"exit=$LASTEXITCODE\")"
+      "PowerShell(& E:\\\\VSF\\\\TTS\\\\.venv-demucs\\\\Scripts\\\\python.exe -m demucs -h 2>&1 | Select-Object -First 3; Write-Output \"exit=$LASTEXITCODE\")",
+      "Bash(du -sh */)",
+      "Bash(cat .gitignore)",
+      "Bash(du -sh data/metadata)",
+      "Bash(git rm *)",
+      "Bash(rm -rf external_repos/VSF-audio-pipeline/.git)",
+      "Bash(git diff *)",
+      "Bash(xargs -0 du -h)",
+      "Bash(git commit -m '@ *)",
+      "Bash(gh repo *)",
+      "Bash(gh auth *)",
+      "Bash(gh api *)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(git remote *)",
+      "Bash(git ls-remote *)"
     ]
   }
 }

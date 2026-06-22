@@ -86,6 +86,11 @@ class Settings(BaseSettings):
     segment_boundary_slack_sec: float = Field(default=0.8, alias="SEGMENT_BOUNDARY_SLACK_SEC")
     segment_merge_gap_sec: float = Field(default=0.5, alias="SEGMENT_MERGE_GAP_SEC")
     vtt_overlap_sec: float = Field(default=0.2, alias="VTT_OVERLAP_SEC")
+    # Chuẩn hóa âm lượng (EBU R128 loudnorm) khi normalize audio, không chỉ đổi format.
+    loudnorm_enabled: bool = Field(default=True, alias="LOUDNORM_ENABLED")
+    loudnorm_i: float = Field(default=-16.0, alias="LOUDNORM_I")
+    loudnorm_tp: float = Field(default=-1.5, alias="LOUDNORM_TP")
+    loudnorm_lra: float = Field(default=11.0, alias="LOUDNORM_LRA")
     quality_gate_enabled: bool = Field(default=True, alias="QUALITY_GATE_ENABLED")
     quality_gate_min_rms: float = Field(default=0.015, alias="QUALITY_GATE_MIN_RMS")
     quality_gate_min_peak: float = Field(default=0.05, alias="QUALITY_GATE_MIN_PEAK")
@@ -105,6 +110,10 @@ class Settings(BaseSettings):
     asr_no_speech_threshold: float = Field(default=0.6, alias="ASR_NO_SPEECH_THRESHOLD")
     asr_logprob_min: float = Field(default=-1.0, alias="ASR_LOGPROB_MIN")
     asr_vad_filter: bool = Field(default=True, alias="ASR_VAD_FILTER")
+    # WER gate: ASR (hypothesis) vs VTT (reference) mức segment để QA alignment.
+    # Tắt mặc định (ASR mỗi segment rất nặng); bật để flag segment lệch caption.
+    wer_gate_enabled: bool = Field(default=False, alias="WER_GATE_ENABLED")
+    wer_gate_max: float = Field(default=0.05, alias="WER_GATE_MAX")
 
     # Tách vocal bằng Demucs trước normalize (chạy trên raw, giữ chất lượng tách).
     # Tắt mặc định -> pipeline giữ nguyên hành vi cũ. Command trỏ env riêng có torch.
@@ -114,6 +123,9 @@ class Settings(BaseSettings):
     demucs_model: str = Field(default="htdemucs", alias="DEMUCS_MODEL")
     demucs_device: str = Field(default="cuda", alias="DEMUCS_DEVICE")
     separated_audio_dir: Path = Field(default=Path("data/processed/separated"), alias="DEMUCS_SEPARATED_DIR")
+    # auto mode: noise floor (dB) của raw >= ngưỡng -> file nhiễu -> Demucs; thấp hơn -> ffmpeg.
+    # -50 dB là điểm khởi đầu (tune để ~20% rơi vào Demucs trên data thực).
+    demucs_noise_floor_db: float = Field(default=-50.0, alias="DEMUCS_NOISE_FLOOR_DB")
 
     @property
     def resolved_database_url(self) -> str:

@@ -156,7 +156,6 @@ class VADSession:
             self._prev_volume = volume
 
             speaking = self._is_speaking(p, volume)
-            # print("t {:.3f}, speaking {}, p {:.2f}, v {:.2f}".format(self._total_processed, speaking, p, volume))
             if speaking:
                 if self._voice_state == VoiceState.QUIET:
                     self._voice_state = VoiceState.STARTING

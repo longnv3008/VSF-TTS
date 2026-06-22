@@ -5,15 +5,20 @@ Turns raw / crawled audio into clean, labeled speech segments ready for TTS trai
 
 ```mermaid
 flowchart LR
-    A[YouTube / raw audio] --> B{Demucs<br/>on by default}
-    B -->|vocal stem| C[Clean<br/>mono 16 kHz 16-bit WAV]
-    B -. raw fallback .-> C
+    A[YouTube / raw audio] --> B{Demucs auto<br/>route by noise floor}
+    B -->|noisy → vocal stem| C[Clean<br/>loudnorm + mono 16 kHz 16-bit WAV]
+    B -->|clean → ffmpeg only| C
     C --> D[VAD<br/>speech segmentation]
-    D --> E[segments/*.wav]
-    D --> F[labels.csv / labels.jsonl]
+    D --> G{VTT subtitle?}
+    G -->|no| SKIP[skip video]
+    G -->|yes| E[segments/*.wav]
+    E --> F[labels.csv / labels.jsonl]
+    F -. optional WER gate .-> Q[ASR vs VTT QA]
 
     classDef out fill:#e8f5e9,stroke:#43a047;
+    classDef skip fill:#ffebee,stroke:#e53935;
     class E,F out;
+    class SKIP skip;
 ```
 
 ---
@@ -23,13 +28,15 @@ flowchart LR
 | Stage | What it does |
 |-------|--------------|
 | **Crawl** | Download audio + subtitles from YouTube via the `VSF-audio-pipeline` repo |
-| **Demucs** | Separate **vocals** from background music (on by default, raw fallback) |
-| **Clean** | Downsample vocal stem → mono 16 kHz 16-bit PCM WAV |
+| **Demucs** | Separate **vocals** from background music. `auto` routes by measured noise floor (noisy → Demucs, clean → ffmpeg only); also `on`/`off` |
+| **Clean** | Loudness-normalize (EBU R128 `loudnorm`) + downsample → mono 16 kHz 16-bit PCM WAV |
 | **VAD** | Silero-based VAD cuts speaking segments |
-| **Label** | Emit one row/segment: `segment_id,label,source_file,...,start,end,duration` |
+| **Label** | VTT subtitle required: cut segments aligned to subtitle text, emit one row/segment. **No VTT → skip the video** (no ASR fallback) |
 
 Demucs runs on full-quality raw audio; only the vocal stem is downsampled and fed
-into VAD, so segments are clean speech (better for TTS).
+into VAD, so segments are clean speech (better for TTS). Labels come only from
+YouTube subtitles (VTT); ASR (faster-whisper) is kept solely as an optional **WER
+gate** that flags segments whose audio disagrees with the caption.
 
 ### Two run modes
 

@@ -8,24 +8,27 @@ AI/agent đọc file này trước. Sau đó mở phase doc liên quan khi cần
 
 ```
 [YouTube URLs]
-    │ Phase 0 — Crawl
+    │ Phase 0 — Crawl (audio + VTT subtitle)
     ▼
 [raw audio: .wav/.webm/.mp4]
-    │ Phase 1 — Demucs vocal separation
+    │ Phase 1 — Demucs (auto: route by noise floor)
+    │   noisy → vocal stem    |    clean → ffmpeg only
     ▼
-[vocals.wav — clean voice stem, native SR]
-    │ Phase 2 — Clean / Normalize
+[vocals.wav OR raw — voice source, native SR]
+    │ Phase 2 — Clean / Normalize (loudnorm EBU R128)
     ▼
 [clean_wav/*.wav — mono 16kHz 16-bit PCM]
     │ Phase 3 — VAD segmentation (Silero V6 ONNX)
     ▼
 [SpeechRegion list: {start, end}]
     │ Phase 4 — Label & Export
+    │   VTT subtitle? ── no ──> SKIP video (no ASR fallback)
+    │            └─ yes: cut + align to subtitle text
     ▼
 [segments/*.wav + labels.csv + labels.jsonl]
     │
     ├─ Phase 5 — Finetune VAD (offline, iterative)
-    └─ Phase 6 — WER Evaluation (offline, quality check)
+    └─ Phase 6 — WER Evaluation (offline + optional in-pipeline WER gate: ASR vs VTT)
 ```
 
 ---

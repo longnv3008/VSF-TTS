@@ -39,9 +39,25 @@ Pipeline tự tìm Demucs theo thứ tự ưu tiên (logic trong `scripts/demucs
 3. `python -m demucs` (system python)
 4. Nếu không có → fallback về raw audio (log warning, không crash)
 
-## Demucs ON by default
+## Crawl path: auto routing theo noise floor
 
-Không cần flag gì. Demucs tự chạy nếu venv tìm thấy.
+Trên crawl path (backend `pipeline_service._should_use_demucs_for_row`),
+`DEMUCS_MODE=auto` (mặc định) **không** tách mọi file. Thay vào đó đo noise floor
+của raw file bằng `ffmpeg astats` (`separation/noise_probe.py`):
+
+- noise floor ≥ `DEMUCS_NOISE_FLOOR_DB` (mặc định `-50` dB) → file nhiễu → Demucs
+  (reason `auto_noise_high`).
+- thấp hơn → file sạch → bỏ Demucs, chỉ ffmpeg (reason `auto_noise_low`).
+- probe lỗi (vd thiếu ffmpeg) → fallback an toàn không Demucs (`auto_noise_unknown`).
+
+`DEMUCS_MODE=on` ép Demucs mọi file; `off` tắt hẳn. Raw crawl là webm/m4a/opus nên
+dùng astats (đọc mọi format) thay vì đọc PCM trực tiếp. Ngưỡng `-50` dB là điểm
+khởi đầu — tune để ~20% file rơi vào Demucs trên data thực.
+
+## Local path: Demucs ON by default
+
+Trên `end_to_end_pipeline.py` (local), Demucs tự chạy nếu venv tìm thấy (flag
+`--demucs/--no-demucs`); local path chưa có auto routing theo noise.
 
 ```powershell
 # Chạy bình thường (Demucs auto)
@@ -80,5 +96,7 @@ python scripts\end_to_end_pipeline.py `
 ## Files liên quan
 
 - `scripts/demucs_env.py` — auto-resolve + probe logic
-- `scripts/end_to_end_pipeline.py:separate_vocals()` — orchestration
+- `scripts/end_to_end_pipeline.py:separate_vocals()` — local orchestration
+- `.../application/separation/noise_probe.py` — crawl-path noise-floor routing
+- `.../application/pipeline_service.py:_should_use_demucs_for_row()` — auto/on/off
 - `requirements-demucs.txt` — pinned deps CPU env
