@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import random
 import asyncio
 import logging
@@ -19,7 +20,8 @@ def int_or_str(text):
     
 parser = argparse.ArgumentParser()
 parser.add_argument('-u', '--uri', type=str, metavar='URL',
-                    help='Server URL', default='10.124.68.83:8001')
+                    help='Server URL (or set VAD_SERVER env)',
+                    default=os.environ.get('VAD_SERVER', '10.124.68.83:8001'))
 parser.add_argument('-r', '--sample_rate', type=int, help='sampling rate', default=16000)
 parser.add_argument(
         "-d",

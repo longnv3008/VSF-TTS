@@ -5,7 +5,6 @@ import numpy as np
 from ast import literal_eval
 import tritonclient.grpc as grpcclient
 import uuid
-import json
 
 sys.stdin.reconfigure(encoding="utf-8")
 sys.stdout.reconfigure(encoding="utf-8")
