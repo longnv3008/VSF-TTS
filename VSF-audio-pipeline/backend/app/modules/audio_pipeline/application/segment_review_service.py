@@ -53,10 +53,10 @@ class SegmentReviewService:
 
     def _write_rows(self, batch_name: str, rows: list[dict]) -> None:
         normalized = [{k: r.get(k, "") for k in SEGMENT_METADATA_FIELDS} for r in rows]
-        write_csv(self._csv_path(batch_name), SEGMENT_METADATA_FIELDS, normalized)
         with self._jsonl_path(batch_name).open("w", encoding="utf-8") as handle:
             for row in normalized:
                 handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+        write_csv(self._csv_path(batch_name), SEGMENT_METADATA_FIELDS, normalized)
 
     # ---- view model -------------------------------------------------------
     def _to_view(self, row: dict) -> dict:
