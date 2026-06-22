@@ -5,10 +5,7 @@ from pathlib import Path
 from time import perf_counter
 from typing import Callable, Iterator
 
-from app.modules.audio_pipeline.application.segmentation.aligner import (
-    align_units_to_vad,
-    vad_only_segments,
-)
+from app.modules.audio_pipeline.application.segmentation.aligner import align_units_to_vad
 from app.modules.audio_pipeline.application.segmentation.asr_adapter import AsrAdapter
 from app.modules.audio_pipeline.application.segmentation.quality_gate import (
     SegmentQualityDecision,
@@ -122,31 +119,34 @@ def segment_video(
             duration_sec=round(duration, 3),
         )
 
-    use_vtt = config.use_vtt_transcript and _has_usable_vtt(subtitle_path)
-    transcript_source = "vtt"
-    if use_vtt:
-        cues = parse_youtube_vtt(Path(subtitle_path))
-        units = cues_to_sentence_units(
-            cues, config.phrase_gap_sec, config.sentence_max_sec, config.sentence_min_sec
-        )
-        aligned: list[AlignedSegment] = align_units_to_vad(
-            units, regions, duration, config.pad_sec, config.merge_gap_sec,
-            config.min_segment_sec, config.boundary_slack_sec,
-        )
-        aligned = _apply_vtt_overlap(
-            aligned,
-            duration=duration,
-            overlap_sec=config.vtt_overlap_sec,
-            min_segment_sec=config.min_segment_sec,
-        )
-        if not aligned:  # có VTT nhưng không tạo được unit hợp lệ -> rơi về VAD-only + ASR
-            use_vtt = False
+    if not (config.use_vtt_transcript and _has_usable_vtt(subtitle_path)):
+        # Không subtitle hợp lệ -> skip video. Bỏ hẳn ASR fallback sinh nhãn.
+        if stage_notifier:
+            stage_notifier(stage="segment_and_label", status="skipped", reason="no_subtitle")
+        sink.flush()
+        return []
 
-    if not use_vtt:
-        transcript_source = "asr"
-        aligned = vad_only_segments(
-            regions, duration, config.pad_sec, config.min_segment_sec, config.sentence_max_sec
-        )
+    transcript_source = "vtt"
+    cues = parse_youtube_vtt(Path(subtitle_path))
+    units = cues_to_sentence_units(
+        cues, config.phrase_gap_sec, config.sentence_max_sec, config.sentence_min_sec
+    )
+    aligned: list[AlignedSegment] = align_units_to_vad(
+        units, regions, duration, config.pad_sec, config.merge_gap_sec,
+        config.min_segment_sec, config.boundary_slack_sec,
+    )
+    aligned = _apply_vtt_overlap(
+        aligned,
+        duration=duration,
+        overlap_sec=config.vtt_overlap_sec,
+        min_segment_sec=config.min_segment_sec,
+    )
+    if not aligned:
+        # Có VTT nhưng không tạo được unit hợp lệ -> cũng skip (không ASR fallback).
+        if stage_notifier:
+            stage_notifier(stage="segment_and_label", status="skipped", reason="no_vtt_units")
+        sink.flush()
+        return []
 
     out_dir = segments_root / batch_name / audio_id
     rows: list[dict] = []
@@ -169,21 +169,9 @@ def segment_video(
                 chunk_ms=config.quality_gate_chunk_ms,
             )
 
-        text = seg.text
-        transcript_status = seg.transcript_status
-        if transcript_source == "asr" and quality.keep:
-            _t = perf_counter()
-            # Adapter đã hardening + clean_transcript + chuẩn hóa VLSP nội bộ.
-            text = asr_adapter.transcribe(seg_wav).strip()
-            sink.add("asr", perf_counter() - _t)
-            transcript_status = "ready" if text else "missing"
-        elif transcript_source == "vtt":
-            # VTT path: loại caption ảo giác phổ biến (exact + promo substring) + chuẩn hóa VLSP.
-            text = "" if (is_blocklisted(text) or has_promo_marker(text)) else normalize_vlsp(text)
-            transcript_status = seg.transcript_status if text else "missing"
-        else:
-            text = ""
-            transcript_status = "missing"
+        # VTT path: loại caption ảo giác phổ biến (exact + promo substring) + chuẩn hóa VLSP.
+        text = "" if (is_blocklisted(seg.text) or has_promo_marker(seg.text)) else normalize_vlsp(seg.text)
+        transcript_status = seg.transcript_status if text else "missing"
 
         if config.quality_gate_enabled:
             text_quality = gate_text(

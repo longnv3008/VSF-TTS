@@ -155,7 +155,8 @@ def test_vtt_normalized_vlsp(make_wav, tmp_path):
     assert rows[0]["text"] == "khối nato họp"
 
 
-def test_asr_fallback_when_no_vtt(make_wav, tmp_path):
+def test_no_vtt_skips_video(make_wav, tmp_path):
+    # Không subtitle hợp lệ -> skip (bỏ hẳn ASR fallback sinh nhãn).
     wav = make_wav(seconds=2.0, name="yt_vid.wav")
     row = {"audio_id": "yt_vid", "video_id": "vid", "title": "t",
            "source_url": "u", "audio_file_path": str(wav), "subtitle_file_path": ""}
@@ -163,17 +164,16 @@ def test_asr_fallback_when_no_vtt(make_wav, tmp_path):
         row, vad_client=_FakeVad([SpeechRegion(0.0, 1.0)], 2.0), asr_adapter=_FakeAsr(),
         config=_cfg(), segments_root=tmp_path / "segments", batch_name="b1",
     )
-    assert len(rows) == 1
-    assert rows[0]["transcript_source"] == "asr"
-    assert rows[0]["text"] == "loi asr"
+    assert rows == []
 
 
-def test_quality_gate_drops_silent_segment_before_asr(make_wav, tmp_path):
-    cfg = _cfg()
-    cfg = SegmentationConfig(**{**cfg.__dict__, "quality_gate_enabled": True})
+def test_quality_gate_drops_silent_segment(make_wav, tmp_path):
+    cfg = SegmentationConfig(**{**_cfg().__dict__, "quality_gate_enabled": True})
     wav = make_wav(seconds=2.0, name="yt_vid.wav")
+    vtt = tmp_path / "vid__t.vi.vtt"
+    vtt.write_text(VTT, encoding="utf-8")
     row = {"audio_id": "yt_vid", "video_id": "vid", "title": "t",
-           "source_url": "u", "audio_file_path": str(wav), "subtitle_file_path": ""}
+           "source_url": "u", "audio_file_path": str(wav), "subtitle_file_path": str(vtt)}
     rows = segment_video(
         row, vad_client=_FakeVad([SpeechRegion(0.0, 1.0)], 2.0), asr_adapter=_FakeAsr(),
         config=cfg, segments_root=tmp_path / "segments", batch_name="b1",
@@ -184,7 +184,7 @@ def test_quality_gate_drops_silent_segment_before_asr(make_wav, tmp_path):
     assert "low_rms" in rows[0]["quality_reasons"]
 
 
-def test_quality_gate_keeps_loud_segment_with_reasonable_text(tmp_path):
+def test_quality_gate_keeps_loud_segment_with_vtt_text(tmp_path):
     cfg = SegmentationConfig(
         chunk_ms=64, threshold=0.7, min_volume=0.6, start_secs=0.1, stop_secs=0.45,
         sentence_max_sec=12.0, sentence_min_sec=0.3, phrase_gap_sec=0.45, use_vtt_transcript=True,
@@ -199,13 +199,15 @@ def test_quality_gate_keeps_loud_segment_with_reasonable_text(tmp_path):
         writer.setsampwidth(2)
         writer.setframerate(sample_rate)
         writer.writeframes((b"\x80\x0c" * frames))
+    vtt = tmp_path / "vid__t.vi.vtt"
+    vtt.write_text(VTT, encoding="utf-8")
     row = {"audio_id": "yt_vid", "video_id": "vid", "title": "t",
-           "source_url": "u", "audio_file_path": str(wav), "subtitle_file_path": ""}
+           "source_url": "u", "audio_file_path": str(wav), "subtitle_file_path": str(vtt)}
     rows = segment_video(
         row, vad_client=_FakeVad([SpeechRegion(0.0, 1.0)], 2.0), asr_adapter=_FakeAsr(),
         config=cfg, segments_root=tmp_path / "segments", batch_name="b1",
     )
-    assert rows[0]["text"] == "loi asr"
+    assert rows[0]["text"] == "xin chao cac ban."
     assert rows[0]["transcript_status"] == "ready"
     assert rows[0]["quality_label"] == "speech_clean"
 
@@ -258,27 +260,30 @@ def test_timing_sink_vtt_path_calls_vad_span(make_wav, tmp_path):
     assert sink.flush_count == 1
 
 
-def test_timing_sink_asr_path_accumulates_asr(make_wav, tmp_path):
-    """ASR fallback path: asr sub-stage accumulated."""
+def test_timing_sink_no_vtt_skips_and_flushes(make_wav, tmp_path):
+    """No VTT -> skip video, no asr sub-stage, still flushes once."""
     wav = make_wav(seconds=2.0, name="yt_vid.wav")
     row = {"audio_id": "yt_vid", "video_id": "vid", "title": "t",
            "source_url": "u", "audio_file_path": str(wav), "subtitle_file_path": ""}
     sink = _SpySink()
-    segment_video(
+    rows = segment_video(
         row, vad_client=_FakeVad([SpeechRegion(0.0, 1.0)], 2.0), asr_adapter=_FakeAsr(),
         config=_cfg(), segments_root=tmp_path / "segments", batch_name="b1",
         timing_sink=sink,
     )
+    assert rows == []
     asr_subs = [s for s, _ in sink.adds if s == "asr"]
-    assert len(asr_subs) >= 1
+    assert len(asr_subs) == 0
     assert sink.flush_count == 1
 
 
 def test_timing_sink_null_by_default(make_wav, tmp_path):
-    """No timing_sink arg -> _NullSink, does not raise, result unchanged."""
+    """No timing_sink arg -> _NullSink, does not raise, VTT path returns a row."""
     wav = make_wav(seconds=2.0, name="yt_vid.wav")
+    vtt = tmp_path / "vid__t.vi.vtt"
+    vtt.write_text(VTT, encoding="utf-8")
     row = {"audio_id": "yt_vid", "video_id": "vid", "title": "t",
-           "source_url": "u", "audio_file_path": str(wav), "subtitle_file_path": ""}
+           "source_url": "u", "audio_file_path": str(wav), "subtitle_file_path": str(vtt)}
     rows = segment_video(
         row, vad_client=_FakeVad([SpeechRegion(0.0, 1.0)], 2.0), asr_adapter=_FakeAsr(),
         config=_cfg(), segments_root=tmp_path / "segments", batch_name="b1",

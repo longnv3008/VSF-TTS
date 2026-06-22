@@ -1650,25 +1650,6 @@ class AudioPipelineService:
                 if not rows:
                     logger.warning("step=segment_and_label | url=%s | no_segments", current_url)
                 else:
-                    if any(item.get("transcript_source") == "asr" for item in rows):
-                        ready_count = sum(
-                            1
-                            for item in rows
-                            if item.get("transcript_source") == "asr"
-                            and item.get("transcript_status") == "ready"
-                        )
-                        asr_count = sum(1 for item in rows if item.get("transcript_source") == "asr")
-                        self._notify_url_stage(
-                            message="ASR hoàn tất",
-                            job_id=job_id,
-                            batch_name=batch_name,
-                            url=current_url,
-                            video_id=video_id,
-                            step="asr",
-                            status="completed",
-                            ready_count=ready_count,
-                            segment_count=asr_count,
-                        )
                     ready_count = sum(1 for item in rows if item.get("transcript_status") == "ready")
                     missing_count = len(rows) - ready_count
                     self._notify_url_stage(

@@ -4,6 +4,13 @@ from app.modules.audio_pipeline.application.pipeline_service import AudioPipelin
 from app.modules.audio_pipeline.application.segmentation.types import SpeechRegion
 
 
+VTT = """WEBVTT
+
+00:00:00.000 --> 00:00:01.000
+cau mot.
+"""
+
+
 class _FakeVad:
     def detect_regions(self, wav_path):
         return 2.0, [SpeechRegion(0.0, 1.0)]
@@ -24,13 +31,15 @@ def test_segment_and_label_and_metadata(make_wav, tmp_path, monkeypatch):
     )
 
     wav = make_wav(seconds=2.0, name="yt_vid.wav")
+    vtt = tmp_path / "vid__t.vi.vtt"
+    vtt.write_text(VTT, encoding="utf-8")
     processed_rows = [{
         "audio_id": "yt_vid", "video_id": "vid", "title": "t", "source_url": "u",
-        "audio_file_path": str(wav), "subtitle_file_path": "",
+        "audio_file_path": str(wav), "subtitle_file_path": str(vtt),
     }]
     seg_rows = service.segment_and_label(processed_rows, batch_name="b1")
     assert len(seg_rows) == 1
-    assert seg_rows[0]["transcript_source"] == "asr"
+    assert seg_rows[0]["transcript_source"] == "vtt"
 
     manifest = service.build_segment_metadata(seg_rows, batch_name="b1")
     assert manifest.exists()
