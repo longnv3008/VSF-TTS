@@ -25,6 +25,7 @@ class FasterWhisperAdapter:
         device: str = "cuda",
         model: object | None = None,
         *,
+        beam_size: int = 5,
         no_speech_threshold: float = 0.6,
         logprob_min: float = -1.0,
         vad_filter: bool = True,
@@ -32,6 +33,7 @@ class FasterWhisperAdapter:
         self.model_name = model_name
         self.device = device
         self._model = model
+        self.beam_size = beam_size
         self.no_speech_threshold = no_speech_threshold
         self.logprob_min = logprob_min
         self.vad_filter = vad_filter
@@ -52,11 +54,11 @@ class FasterWhisperAdapter:
         return self._model
 
     def _decode_kwargs(self) -> dict:
-        # Greedy + không điều kiện ngữ cảnh trước + temperature 0 -> tất định, không lan
-        # truyền ảo giác giữa các phân đoạn. vad_filter = lớp gate Silero nội bộ phụ.
+        # Beam search nhỏ giúp bám sát accent tốt hơn greedy, vẫn giữ temperature 0 để
+        # tránh lan truyền ảo giác giữa các phân đoạn. vad_filter = lớp gate Silero nội bộ phụ.
         return {
             "language": "vi",
-            "beam_size": 1,
+            "beam_size": self.beam_size,
             "temperature": 0.0,
             "condition_on_previous_text": False,
             "no_speech_threshold": self.no_speech_threshold,

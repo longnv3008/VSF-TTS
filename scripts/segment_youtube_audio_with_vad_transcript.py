@@ -314,6 +314,7 @@ def collect_audio_items(audio_dir: Path, vtt_dir: Path, limit: int | None) -> li
     return items
 
 
+
 def run_vad_regions(model: VADModel, wav_path: Path, vad_args: argparse.Namespace) -> tuple[float, list[SpeechRegion]]:
     duration, labeled = run_vad_file(model, wav_path, vad_args)
     regions = [
@@ -688,6 +689,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--stop-secs", type=float, default=0.45)
     parser.add_argument("--merge-gap-secs", type=float, default=0.5)
     parser.add_argument("--min-speech-secs", type=float, default=0.08)
+    parser.add_argument("--segment-pad-secs", type=float, default=0.12)
     parser.add_argument("--refine-boundaries", action="store_true")
     parser.add_argument("--refine-energy-db-below-peak", type=float, default=35.0)
     parser.add_argument("--refine-energy-min-rms", type=float, default=1e-4)

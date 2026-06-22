@@ -7,6 +7,7 @@ therefore extremely fast.  They validate the algorithmic correctness of:
 
 * events_to_speech_segments
 * merge_speech_segments
+* pad_speech_segments
 * _fill_short_mask_gaps
 * _remove_short_mask_runs
 * _pad_mask_runs
@@ -138,6 +139,36 @@ class TestMergeSpeechSegments:
         # The 40 ms segment is dropped; gap between nothing and 0.1 s segment is irrelevant.
         assert len(result) == 1
         assert result[0]["start"] == 0.1
+
+
+# ===========================================================================
+# pad_speech_segments
+# ===========================================================================
+class TestPadSpeechSegments:
+    def test_padding_extends_both_boundaries(self):
+        segments = [{"start": 1.0, "end": 2.0}]
+        result = bv.pad_speech_segments(
+            segments,
+            duration=5.0,
+            pad_secs=0.12,
+            merge_gap_secs=0.5,
+            min_speech_secs=0.08,
+        )
+        assert result == [{"start": 0.88, "end": 2.12}]
+
+    def test_padding_clamps_and_merges_overlaps(self):
+        segments = [
+            {"start": 0.05, "end": 0.30},
+            {"start": 0.36, "end": 0.60},
+        ]
+        result = bv.pad_speech_segments(
+            segments,
+            duration=1.0,
+            pad_secs=0.12,
+            merge_gap_secs=0.0,
+            min_speech_secs=0.0,
+        )
+        assert result == [{"start": 0.0, "end": 0.72}]
 
 
 # ===========================================================================

@@ -49,6 +49,7 @@ DEFAULT_VAD_ARGS: dict = dict(
     stop_secs=0.45,
     merge_gap_secs=0.50,
     min_speech_secs=0.08,
+    segment_pad_secs=0.12,
     refine_boundaries=False,
     refine_energy_db_below_peak=35.0,
     refine_energy_min_rms=1e-4,

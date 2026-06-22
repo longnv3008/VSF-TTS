@@ -21,7 +21,7 @@ from app.modules.audio_pipeline.application.separation.demucs_separator import (
     separate_vocals as demucs_separate_vocals,
 )
 from app.modules.audio_pipeline.application.segmentation.types import SegmentationConfig
-from app.modules.audio_pipeline.application.segmentation.vad_grpc_client import TritonVadClient
+from app.modules.audio_pipeline.application.segmentation.vad_local_client import OnnxVadClient
 from app.modules.audio_pipeline.application.stage_timing import (
     SegmentTimingSink,
     close_timing,
@@ -177,6 +177,74 @@ class AudioPipelineService:
             status=status,
             **context,
         )
+
+    def _notify_url_stage(
+        self,
+        *,
+        message: str,
+        job_id: int | None,
+        batch_name: str | None,
+        url: str,
+        video_id: str | None = None,
+        step: str,
+        status: str,
+        **context: Any,
+    ) -> None:
+        stage_labels = {
+            "demucs": "Demucs",
+            "vad": "VAD",
+            "asr": "ASR",
+            "segment_output": "Output",
+            "segment_and_label": "Segment",
+        }
+        status_labels = {
+            "started": "bắt đầu",
+            "completed": "xong",
+            "failed": "lỗi",
+        }
+        stage_text = stage_labels.get(step, step.upper())
+        status_text = status_labels.get(status, status)
+        lines = [f"{stage_text} {status_text}", f"URL: {url}"]
+        if video_id:
+            lines.append(f"Video ID: {video_id}")
+        if step == "vad" and status == "completed":
+            if "region_count" in context:
+                lines.append(f"Speech regions: {context['region_count']}")
+        if step == "asr" and status == "completed":
+            if "segment_count" in context and "ready_count" in context:
+                lines.append(
+                    f"ASR ready: {context['ready_count']}/{context['segment_count']}"
+                )
+        if step == "segment_output" and status == "completed":
+            if "segment_count" in context and "ready_count" in context:
+                lines.append(
+                    f"Segments: {context['ready_count']}/{context['segment_count']} ready"
+                )
+            if "missing_count" in context:
+                lines.append(f"Missing: {context['missing_count']}")
+        if status == "failed" and "error" in context:
+            lines.append(f"Lỗi: {context['error']}")
+        if step == "demucs" and status == "completed":
+            if context.get("backend") == "demucs":
+                lines.append("Bộ lọc nhạc: demucs")
+            elif context.get("backend") == "ffmpeg":
+                lines.append("Bộ lọc nhạc: ffmpeg")
+            if "reason" in context:
+                lines.append(f"Lý do: {context['reason']}")
+
+        send_telegram_log("\n".join(lines))
+
+    @staticmethod
+    def _should_use_demucs_for_row(row: dict[str, str]) -> tuple[bool, str]:
+        mode = settings.resolved_demucs_mode
+        has_vtt = bool((row.get("subtitle_file_path") or "").strip())
+        if mode == "off":
+            return False, "demucs_mode=off"
+        if mode == "on":
+            return True, "demucs_mode=on"
+        if has_vtt:
+            return False, "auto_skip_has_vtt"
+        return True, "auto_use_for_asr"
 
     @staticmethod
     def _log_crawl(event: str, **context: Any) -> None:
@@ -1159,6 +1227,26 @@ class AudioPipelineService:
                                     cause=FileNotFoundError(f"Downloaded audio missing after postprocess: {filepath}"),
                                 )
                             subtitle_file = self._resolve_subtitle_file(raw_file)
+                            if subtitle_file is None or subtitle_file.suffix.lower() != ".vtt":
+                                video_id = str(entry.get("id", "")).strip()
+                                self._log_crawl_warning("subtitle_missing", url=url, video_id=video_id)
+                                self._notify_telegram(
+                                    "YouTube subtitle missing",
+                                    job_id=job_id,
+                                    batch_name=batch_name,
+                                    url=url,
+                                    video_id=video_id,
+                                    step="crawl_audio",
+                                    status="skipped",
+                                    reason="missing_vtt",
+                                )
+                                raise SkipUrlError(
+                                    step="crawl_audio",
+                                    failed_url=url,
+                                    cause=FileNotFoundError(
+                                        f"No .vtt subtitle downloaded for video_id={video_id or 'unknown'}",
+                                    ),
+                                )
 
                             row = {
                                 "video_id": str(entry.get("id", "")).strip(),
@@ -1171,6 +1259,8 @@ class AudioPipelineService:
                             self._log_crawl("saved", url=url, video_id=row["video_id"])
                             rows.append(row)
                         except BatchAbortError:
+                            raise
+                        except SkipUrlError:
                             raise
                         except Exception as exc:
                             logger.exception("step=crawl_audio | url=%s | error=%s", url, format_function_error("crawl_youtube", exc))
@@ -1185,6 +1275,9 @@ class AudioPipelineService:
             logger.info("step=crawl_audio")
             return rows
         except BatchAbortError:
+            self._note_crawl_finished()
+            raise
+        except SkipUrlError:
             self._note_crawl_finished()
             raise
         except Exception as exc:
@@ -1208,7 +1301,7 @@ class AudioPipelineService:
         batch_name: str | None = None,
     ) -> list[dict[str, str]]:
         # Tách vocal bằng Demucs trên raw trước normalize. Tắt -> trả nguyên rows.
-        if not settings.demucs_enabled:
+        if settings.resolved_demucs_mode == "off":
             return source_rows
 
         outputs: list[dict[str, str]] = []
@@ -1217,14 +1310,47 @@ class AudioPipelineService:
             video_id = row.get("video_id", "")
             raw_path = row.get("raw_file_path", "")
             raw_file = Path(raw_path)
+            use_demucs, reason = self._should_use_demucs_for_row(row)
             if not raw_file.exists() or not raw_file.is_file():
                 logger.warning("step=vocal_separation | missing raw | url=%s", current_url)
                 outputs.append(row)
+                continue
+            if not use_demucs:
+                new_row = dict(row)
+                new_row["audio_filter_backend"] = "ffmpeg"
+                new_row["audio_filter_reason"] = reason
+                outputs.append(new_row)
+                self._notify_url_stage(
+                    message="Audio filter selected",
+                    job_id=job_id,
+                    batch_name=batch_name,
+                    url=current_url,
+                    video_id=video_id,
+                    step="demucs",
+                    status="completed",
+                    backend="ffmpeg",
+                    reason=reason,
+                )
+                logger.info(
+                    "step=vocal_separation | url=%s | skipped demucs | backend=ffmpeg | reason=%s",
+                    current_url,
+                    reason,
+                )
                 continue
             # Demucs là sub-stage nặng nhất -> đo riêng (live running -> completed/failed).
             handle = open_timing(
                 job_id, batch_id, "vocal_separation",
                 sub_stage="demucs", video_id=video_id, url=current_url,
+            )
+            self._notify_url_stage(
+                message="URL stage started",
+                job_id=job_id,
+                batch_name=batch_name,
+                url=current_url,
+                video_id=video_id,
+                step="demucs",
+                status="started",
+                reason=reason,
             )
             try:
                 vocal = demucs_separate_vocals(
@@ -1237,6 +1363,16 @@ class AudioPipelineService:
             except Exception as exc:
                 # Per-file fallback: keep raw so normalize/segment still run; never abort batch.
                 close_timing(handle, status="failed")
+                self._notify_url_stage(
+                    message="URL stage failed",
+                    job_id=job_id,
+                    batch_name=batch_name,
+                    url=current_url,
+                    video_id=video_id,
+                    step="demucs",
+                    status="failed",
+                    error=format_function_error("separate_vocals", exc),
+                )
                 logger.warning(
                     "step=vocal_separation | url=%s | demucs failed, using raw | error=%s",
                     current_url,
@@ -1245,6 +1381,18 @@ class AudioPipelineService:
                 outputs.append(row)
                 continue
             close_timing(handle, status="completed")
+            self._notify_url_stage(
+                message="URL stage completed",
+                job_id=job_id,
+                batch_name=batch_name,
+                url=current_url,
+                video_id=video_id,
+                step="demucs",
+                status="completed",
+                output_file=str(vocal),
+                backend="demucs",
+                reason=reason,
+            )
 
             # Trỏ raw_file_path sang vocal stem để normalize_audio hạ 16k vocal.
             # Xóa raw gốc cho tiết kiệm disk (Demucs đã dùng xong).
@@ -1252,6 +1400,8 @@ class AudioPipelineService:
             new_row = dict(row)
             new_row["original_raw_file_path"] = raw_path
             new_row["raw_file_path"] = str(vocal)
+            new_row["audio_filter_backend"] = "demucs"
+            new_row["audio_filter_reason"] = reason
             outputs.append(new_row)
             logger.info("step=vocal_separation | url=%s | vocal=%s", current_url, vocal)
         return outputs
@@ -1379,19 +1529,31 @@ class AudioPipelineService:
             sentence_max_sec=settings.sentence_max_sec,
             sentence_min_sec=settings.sentence_min_sec,
             phrase_gap_sec=settings.phrase_gap_sec,
+            use_vtt_transcript=settings.use_vtt_transcript,
             pad_sec=settings.segment_pad_sec,
             min_segment_sec=settings.segment_min_sec,
             boundary_slack_sec=settings.segment_boundary_slack_sec,
             merge_gap_sec=settings.segment_merge_gap_sec,
+            vtt_overlap_sec=settings.vtt_overlap_sec,
+            quality_gate_enabled=settings.quality_gate_enabled,
+            quality_gate_min_rms=settings.quality_gate_min_rms,
+            quality_gate_min_peak=settings.quality_gate_min_peak,
+            quality_gate_min_active_ratio=settings.quality_gate_min_active_ratio,
+            quality_gate_chunk_ms=settings.quality_gate_chunk_ms,
+            quality_gate_min_tokens_per_sec=settings.quality_gate_min_tokens_per_sec,
+            quality_gate_max_tokens_per_sec=settings.quality_gate_max_tokens_per_sec,
+            quality_gate_long_segment_sec=settings.quality_gate_long_segment_sec,
+            quality_gate_min_tokens_for_long_segment=settings.quality_gate_min_tokens_for_long_segment,
         )
 
     def _build_segment_dependencies(self):
         # Tách riêng để test có thể inject fake VAD/ASR.
         config = self._build_segmentation_config()
-        vad_client = TritonVadClient(url=settings.vad_grpc_url, config=config)
+        vad_client = OnnxVadClient(model_path=settings.vad_model_path, config=config)
         asr_adapter = FasterWhisperAdapter(
             model_name=settings.asr_model,
             device=settings.asr_device,
+            beam_size=settings.asr_beam_size,
             no_speech_threshold=settings.asr_no_speech_threshold,
             logprob_min=settings.asr_logprob_min,
             vad_filter=settings.asr_vad_filter,
@@ -1411,6 +1573,7 @@ class AudioPipelineService:
         all_rows: list[dict] = []
         for index, row in enumerate(processed_rows):
             current_url = row.get("source_url", "")
+            video_id = row.get("video_id", "")
             remaining_urls = [
                 item.get("source_url", "").strip()
                 for item in processed_rows[index + 1:]
@@ -1425,6 +1588,18 @@ class AudioPipelineService:
             )
             try:
                 logger.info("step=segment_and_label | url=%s", current_url)
+                def _stage_notifier(*, stage: str, status: str, **context: Any) -> None:
+                    self._notify_url_stage(
+                        message="URL stage updated",
+                        job_id=job_id,
+                        batch_name=batch_name,
+                        url=current_url,
+                        video_id=video_id,
+                        step=stage,
+                        status=status,
+                        **context,
+                    )
+
                 rows = segment_video(
                     row,
                     vad_client=vad_client,
@@ -1433,11 +1608,56 @@ class AudioPipelineService:
                     segments_root=self.segments_dir,
                     batch_name=batch,
                     timing_sink=timing_sink,
+                    stage_notifier=_stage_notifier,
                 )
                 if not rows:
                     logger.warning("step=segment_and_label | url=%s | no_segments", current_url)
+                else:
+                    if any(item.get("transcript_source") == "asr" for item in rows):
+                        ready_count = sum(
+                            1
+                            for item in rows
+                            if item.get("transcript_source") == "asr"
+                            and item.get("transcript_status") == "ready"
+                        )
+                        asr_count = sum(1 for item in rows if item.get("transcript_source") == "asr")
+                        self._notify_url_stage(
+                            message="ASR hoàn tất",
+                            job_id=job_id,
+                            batch_name=batch_name,
+                            url=current_url,
+                            video_id=video_id,
+                            step="asr",
+                            status="completed",
+                            ready_count=ready_count,
+                            segment_count=asr_count,
+                        )
+                    ready_count = sum(1 for item in rows if item.get("transcript_status") == "ready")
+                    missing_count = len(rows) - ready_count
+                    self._notify_url_stage(
+                        message="URL output ready",
+                        job_id=job_id,
+                        batch_name=batch_name,
+                        url=current_url,
+                        video_id=video_id,
+                        step="segment_output",
+                        status="completed",
+                        segment_count=len(rows),
+                        ready_count=ready_count,
+                        missing_count=missing_count,
+                    )
                 all_rows.extend(rows)
             except Exception as exc:
+                self._notify_url_stage(
+                    message="URL stage failed",
+                    job_id=job_id,
+                    batch_name=batch_name,
+                    url=current_url,
+                    video_id=video_id,
+                    step="segment_and_label",
+                    status="failed",
+                    error=format_function_error("segment_and_label", exc),
+                )
                 logger.exception(
                     "step=segment_and_label | url=%s | error=%s",
                     current_url,
@@ -1462,7 +1682,8 @@ class AudioPipelineService:
         fieldnames = [
             "audio_id", "video_id", "segment_id", "segment_file", "transcript_file",
             "start", "end", "duration", "text", "transcript_source",
-            "transcript_status", "vad_status", "source_url", "title",
+            "transcript_status", "vad_status", "quality_label", "quality_score",
+            "quality_reasons", "source_url", "title",
         ]
         csv_path = self.metadata_dir / f"{batch}_segments.csv"
 

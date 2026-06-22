@@ -1,4 +1,4 @@
-.PHONY: help install backend-install frontend-install backend-run frontend-run migrate migrate-down migrate-current migrate-history migrate-create up down
+.PHONY: help install backend-install frontend-install backend-run frontend-run migrate migrate-down migrate-current migrate-history migrate-create up down backend-recreate
 
 MIGRATION_MSG ?= update schema
 
@@ -16,6 +16,7 @@ help:
 	@echo "  make migrate-create MIGRATION_MSG='add new column'"
 	@echo "  make up                              Start Docker Compose stack"
 	@echo "  make down                            Stop Docker Compose stack"
+	@echo "  make backend-recreate                Recreate backend container to reload .env changes"
 
 install: backend-install frontend-install
 
@@ -51,3 +52,6 @@ up:
 
 down:
 	docker compose down
+
+backend-recreate:
+	docker compose up -d --force-recreate backend

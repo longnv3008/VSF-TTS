@@ -141,16 +141,19 @@ async def lifespan(_: FastAPI):
         )
     else:
         logger.info("runtime path validation ok")
-    db = SessionLocal()
-    try:
-        resumed_jobs = PipelineJobService(db).resume_incomplete_batches()
-        for job in resumed_jobs:
-            publish_job_event("job_created", job)
-            start_pipeline_job(job.id)
-        if resumed_jobs:
-            logger.info("Resumed incomplete pipeline jobs on startup | count=%s", len(resumed_jobs))
-    finally:
-        db.close()
+    if settings.resume_incomplete_jobs_on_startup:
+        db = SessionLocal()
+        try:
+            resumed_jobs = PipelineJobService(db).resume_incomplete_batches()
+            for job in resumed_jobs:
+                publish_job_event("job_created", job)
+                start_pipeline_job(job.id)
+            if resumed_jobs:
+                logger.info("Resumed incomplete pipeline jobs on startup | count=%s", len(resumed_jobs))
+        finally:
+            db.close()
+    else:
+        logger.info("Startup auto-resume disabled | RESUME_INCOMPLETE_JOBS_ON_STARTUP=false")
     yield
 
 

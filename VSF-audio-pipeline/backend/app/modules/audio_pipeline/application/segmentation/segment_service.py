@@ -3,13 +3,18 @@ from __future__ import annotations
 from contextlib import contextmanager
 from pathlib import Path
 from time import perf_counter
-from typing import Iterator
+from typing import Callable, Iterator
 
 from app.modules.audio_pipeline.application.segmentation.aligner import (
     align_units_to_vad,
     vad_only_segments,
 )
 from app.modules.audio_pipeline.application.segmentation.asr_adapter import AsrAdapter
+from app.modules.audio_pipeline.application.segmentation.quality_gate import (
+    SegmentQualityDecision,
+    gate_audio,
+    gate_text,
+)
 from app.modules.audio_pipeline.application.segmentation.segment_writer import (
     cut_wav_segment,
     write_text,
@@ -42,6 +47,44 @@ class _NullSink:
 _NULL_SINK = _NullSink()
 
 
+def _merge_quality(
+    audio_decision: SegmentQualityDecision,
+    text_decision: SegmentQualityDecision | None = None,
+) -> SegmentQualityDecision:
+    if text_decision is None:
+        return audio_decision
+    keep = audio_decision.keep and text_decision.keep
+    score = round(min(audio_decision.score, text_decision.score), 3)
+    reasons = tuple(dict.fromkeys(audio_decision.reasons + text_decision.reasons))
+    label = "speech_clean" if keep and not reasons else ("needs_review" if keep else "low_quality")
+    return SegmentQualityDecision(keep=keep, label=label, score=score, reasons=reasons)
+
+
+def _apply_vtt_overlap(
+    segments: list[AlignedSegment],
+    *,
+    duration: float,
+    overlap_sec: float,
+    min_segment_sec: float,
+) -> list[AlignedSegment]:
+    if overlap_sec <= 0 or len(segments) < 2:
+        return segments
+    adjusted: list[AlignedSegment] = []
+    for index, seg in enumerate(segments):
+        start = seg.start
+        end = seg.end
+        if index > 0:
+            start = max(0.0, start - overlap_sec)
+        if index < len(segments) - 1:
+            end = min(duration, end + overlap_sec)
+        if end - start < min_segment_sec:
+            continue
+        adjusted.append(
+            AlignedSegment(start, end, seg.text, seg.transcript_status, seg.vad_status)
+        )
+    return adjusted
+
+
 def _has_usable_vtt(subtitle_path: str) -> bool:
     if not subtitle_path:
         return False
@@ -58,6 +101,7 @@ def segment_video(
     segments_root: Path,
     batch_name: str,
     timing_sink: object | None = None,
+    stage_notifier: Callable[..., None] | None = None,
 ) -> list[dict]:
     audio_id = processed_row["audio_id"]
     video_id = processed_row.get("video_id", "")
@@ -66,10 +110,19 @@ def segment_video(
 
     sink = timing_sink or _NULL_SINK
 
+    if stage_notifier:
+        stage_notifier(stage="vad", status="started")
     with sink.span("vad"):
         duration, regions = vad_client.detect_regions(wav_path)
+    if stage_notifier:
+        stage_notifier(
+            stage="vad",
+            status="completed",
+            region_count=len(regions),
+            duration_sec=round(duration, 3),
+        )
 
-    use_vtt = _has_usable_vtt(subtitle_path)
+    use_vtt = config.use_vtt_transcript and _has_usable_vtt(subtitle_path)
     transcript_source = "vtt"
     if use_vtt:
         cues = parse_youtube_vtt(Path(subtitle_path))
@@ -80,7 +133,13 @@ def segment_video(
             units, regions, duration, config.pad_sec, config.merge_gap_sec,
             config.min_segment_sec, config.boundary_slack_sec,
         )
-        if not aligned:  # có VTT nhưng không ráp được -> rơi về VAD-only + ASR
+        aligned = _apply_vtt_overlap(
+            aligned,
+            duration=duration,
+            overlap_sec=config.vtt_overlap_sec,
+            min_segment_sec=config.min_segment_sec,
+        )
+        if not aligned:  # có VTT nhưng không tạo được unit hợp lệ -> rơi về VAD-only + ASR
             use_vtt = False
 
     if not use_vtt:
@@ -99,18 +158,46 @@ def segment_video(
         cut_wav_segment(wav_path, seg_wav, seg.start, seg.end)
         sink.add("cut", perf_counter() - _t)
 
+        duration_sec = round(seg.end - seg.start, 3)
+        quality = SegmentQualityDecision(keep=True, label="speech_clean", score=1.0, reasons=())
+        if config.quality_gate_enabled:
+            quality = gate_audio(
+                seg_wav,
+                min_rms=config.quality_gate_min_rms,
+                min_peak=config.quality_gate_min_peak,
+                min_active_ratio=config.quality_gate_min_active_ratio,
+                chunk_ms=config.quality_gate_chunk_ms,
+            )
+
         text = seg.text
         transcript_status = seg.transcript_status
-        if transcript_source == "asr":
+        if transcript_source == "asr" and quality.keep:
             _t = perf_counter()
             # Adapter đã hardening + clean_transcript + chuẩn hóa VLSP nội bộ.
             text = asr_adapter.transcribe(seg_wav).strip()
             sink.add("asr", perf_counter() - _t)
             transcript_status = "ready" if text else "missing"
-        else:
+        elif transcript_source == "vtt":
             # VTT path: loại caption ảo giác phổ biến (exact + promo substring) + chuẩn hóa VLSP.
             text = "" if (is_blocklisted(text) or has_promo_marker(text)) else normalize_vlsp(text)
             transcript_status = seg.transcript_status if text else "missing"
+        else:
+            text = ""
+            transcript_status = "missing"
+
+        if config.quality_gate_enabled:
+            text_quality = gate_text(
+                text,
+                duration_sec=duration_sec,
+                min_tokens_per_sec=config.quality_gate_min_tokens_per_sec,
+                max_tokens_per_sec=config.quality_gate_max_tokens_per_sec,
+                min_tokens_for_long_segment=config.quality_gate_min_tokens_for_long_segment,
+                long_segment_sec=config.quality_gate_long_segment_sec,
+            )
+            quality = _merge_quality(quality, text_quality)
+            if not quality.keep:
+                text = ""
+                transcript_status = "missing"
         write_text(seg_txt, text)
 
         rows.append({
@@ -121,11 +208,14 @@ def segment_video(
             "transcript_file": str(seg_txt.resolve()),
             "start": round(seg.start, 3),
             "end": round(seg.end, 3),
-            "duration": round(seg.end - seg.start, 3),
+            "duration": duration_sec,
             "text": text,
             "transcript_source": transcript_source,
             "transcript_status": transcript_status,
             "vad_status": seg.vad_status,
+            "quality_label": quality.label,
+            "quality_score": quality.score,
+            "quality_reasons": ",".join(quality.reasons),
             "source_url": processed_row.get("source_url", ""),
             "title": processed_row.get("title", ""),
         })

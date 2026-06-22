@@ -123,6 +123,8 @@ def run_local_vad(args: argparse.Namespace, processed_audio_dir: Path) -> None:
         str(args.merge_gap_secs),
         "--min-speech-secs",
         str(args.min_speech_secs),
+        "--segment-pad-secs",
+        str(args.segment_pad_secs),
     ]
     if args.refine_boundaries:
         cmd.append("--refine-boundaries")
@@ -191,6 +193,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--stop-secs", type=float, default=0.45)
     parser.add_argument("--merge-gap-secs", type=float, default=0.5)
     parser.add_argument("--min-speech-secs", type=float, default=0.08)
+    parser.add_argument("--segment-pad-secs", type=float, default=0.12)
     parser.add_argument("--refine-boundaries", action="store_true")
 
     args = parser.parse_args()
