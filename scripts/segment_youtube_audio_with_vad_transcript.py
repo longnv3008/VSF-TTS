@@ -19,7 +19,6 @@ import json
 import re
 import shutil
 import sys
-import wave
 from dataclasses import dataclass
 from pathlib import Path
 from statistics import mean
@@ -44,6 +43,7 @@ sys.path.insert(0, str(TEXT_QUALITY_DIR))
 
 from batch_vad import MODEL_DIR, VADModel, run_vad_file  # noqa: E402
 from text_quality import has_promo_marker, is_blocklisted, normalize_vlsp  # noqa: E402
+from _pipeline_common import cut_wav_segment, make_vad_args  # noqa: E402
 
 
 TIMESTAMP_RE = re.compile(
@@ -314,30 +314,6 @@ def collect_audio_items(audio_dir: Path, vtt_dir: Path, limit: int | None) -> li
     return items
 
 
-def make_vad_args(args: argparse.Namespace) -> argparse.Namespace:
-    return argparse.Namespace(
-        sample_rate=args.sample_rate,
-        chunk_ms=args.chunk_ms,
-        model_chunk_ms=args.model_chunk_ms,
-        context_ms=args.context_ms,
-        reset_duration=args.reset_duration,
-        threshold=args.threshold,
-        negative_threshold=args.negative_threshold,
-        min_volume=args.min_volume,
-        start_secs=args.start_secs,
-        stop_secs=args.stop_secs,
-        merge_gap_secs=args.merge_gap_secs,
-        min_speech_secs=args.min_speech_secs,
-        refine_boundaries=args.refine_boundaries,
-        refine_energy_db_below_peak=args.refine_energy_db_below_peak,
-        refine_energy_min_rms=args.refine_energy_min_rms,
-        refine_search_pad_ms=args.refine_search_pad_ms,
-        refine_pad_ms=args.refine_pad_ms,
-        refine_min_speech_ms=args.refine_min_speech_ms,
-        refine_max_gap_ms=args.refine_max_gap_ms,
-    )
-
-
 def run_vad_regions(model: VADModel, wav_path: Path, vad_args: argparse.Namespace) -> tuple[float, list[SpeechRegion]]:
     duration, labeled = run_vad_file(model, wav_path, vad_args)
     regions = [
@@ -435,22 +411,6 @@ def vad_only_rows(
                 )
             cursor = chunk_end
     return rows
-
-
-def cut_wav_segment(src: Path, dst: Path, start_sec: float, end_sec: float) -> None:
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    with wave.open(str(src), "rb") as reader:
-        params = reader.getparams()
-        sample_rate = reader.getframerate()
-        total_frames = reader.getnframes()
-        start_frame = max(0, min(total_frames, int(round(start_sec * sample_rate))))
-        end_frame = max(start_frame, min(total_frames, int(round(end_sec * sample_rate))))
-        reader.setpos(start_frame)
-        frames = reader.readframes(end_frame - start_frame)
-
-    with wave.open(str(dst), "wb") as writer:
-        writer.setparams(params)
-        writer.writeframes(frames)
 
 
 def write_text(path: Path, text: str) -> None:
