@@ -1,5 +1,8 @@
-from app.modules.audio_pipeline.application.segmentation.sentence_grouper import cues_to_sentence_units
-from app.modules.audio_pipeline.application.segmentation.types import TranscriptCue
+from app.modules.audio_pipeline.application.segmentation.sentence_grouper import (
+    cues_to_sentence_units,
+    words_to_sentence_units,
+)
+from app.modules.audio_pipeline.application.segmentation.types import TranscriptCue, WordToken
 
 
 def test_groups_until_sentence_end():
@@ -23,12 +26,6 @@ def test_splits_on_large_gap():
     ]
     units = cues_to_sentence_units(cues, phrase_gap_sec=0.45, max_sentence_sec=12.0, min_sentence_sec=0.3)
     assert len(units) == 2
-
-
-from app.modules.audio_pipeline.application.segmentation.sentence_grouper import (
-    words_to_sentence_units,
-)
-from app.modules.audio_pipeline.application.segmentation.types import WordToken
 
 
 def _w(text, start, end):
