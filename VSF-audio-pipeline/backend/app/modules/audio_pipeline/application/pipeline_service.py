@@ -25,6 +25,11 @@ from app.modules.audio_pipeline.application.separation.demucs_separator import (
     separate_vocals as demucs_separate_vocals,
 )
 from app.modules.audio_pipeline.application.separation.noise_probe import measure_noise_floor_db
+from app.modules.audio_pipeline.application.segmentation.llm_judge import (
+    LlmJudgeAdapter,
+    NullJudgeAdapter,
+    OllamaJudgeAdapter,
+)
 from app.modules.audio_pipeline.application.segmentation.music_detect import DEFAULT_MUSIC_KEYWORDS
 from app.modules.audio_pipeline.application.segmentation.types import SegmentationConfig
 from app.modules.audio_pipeline.application.segmentation.vad_local_client import OnnxVadClient
@@ -1610,7 +1615,15 @@ class AudioPipelineService:
             logprob_min=settings.asr_logprob_min,
             vad_filter=settings.asr_vad_filter,
         )
-        return vad_client, asr_adapter
+        if settings.wer_gate_llm_judge_enabled:
+            judge_adapter: LlmJudgeAdapter = OllamaJudgeAdapter(
+                url=settings.wer_gate_llm_judge_url,
+                model=settings.wer_gate_llm_judge_model,
+                timeout=settings.wer_gate_llm_judge_timeout,
+            )
+        else:
+            judge_adapter = NullJudgeAdapter()
+        return vad_client, asr_adapter, judge_adapter
 
     def segment_and_label(
         self,
@@ -1620,7 +1633,7 @@ class AudioPipelineService:
         batch_name: str | None = None,
     ) -> list[dict]:
         config = self._build_segmentation_config()
-        vad_client, asr_adapter = self._build_segment_dependencies()
+        vad_client, asr_adapter, judge_adapter = self._build_segment_dependencies()
         batch = batch_name or "batch_001"
         all_rows: list[dict] = []
         for index, row in enumerate(processed_rows):
@@ -1656,6 +1669,7 @@ class AudioPipelineService:
                     row,
                     vad_client=vad_client,
                     asr_adapter=asr_adapter,
+                    judge_adapter=judge_adapter,
                     config=config,
                     segments_root=self.segments_dir,
                     batch_name=batch,

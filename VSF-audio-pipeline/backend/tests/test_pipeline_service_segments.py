@@ -27,7 +27,7 @@ def test_segment_and_label_and_metadata(make_wav, tmp_path, monkeypatch):
     monkeypatch.setattr(service, "metadata_dir", tmp_path / "metadata")
     monkeypatch.setattr(
         service, "_build_segment_dependencies",
-        lambda: (_FakeVad(), _FakeAsr()),
+        lambda: (_FakeVad(), _FakeAsr(), None),
     )
 
     wav = make_wav(seconds=2.0, name="yt_vid.wav")
@@ -61,7 +61,7 @@ def test_rebuild_preserves_review_columns(make_wav, tmp_path, monkeypatch):
     monkeypatch.setattr(service, "segments_dir", tmp_path / "segments")
     monkeypatch.setattr(service, "metadata_dir", tmp_path / "metadata")
     monkeypatch.setattr(
-        service, "_build_segment_dependencies", lambda: (_FakeVad(), _FakeAsr())
+        service, "_build_segment_dependencies", lambda: (_FakeVad(), _FakeAsr(), None)
     )
     wav = make_wav(seconds=2.0, name="yt_vid.wav")
     vtt = tmp_path / "vid__t.vi.vtt"

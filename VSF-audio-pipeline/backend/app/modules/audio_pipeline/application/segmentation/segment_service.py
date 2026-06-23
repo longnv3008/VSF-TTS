@@ -16,6 +16,7 @@ from app.modules.audio_pipeline.application.segmentation.segment_writer import (
     cut_wav_segment,
     write_text,
 )
+from app.modules.audio_pipeline.application.segmentation.llm_judge import LlmJudgeAdapter, NullJudgeAdapter
 from app.modules.audio_pipeline.application.segmentation.music_detect import is_music_title
 from app.modules.audio_pipeline.application.segmentation.sentence_grouper import cues_to_sentence_units
 from app.modules.audio_pipeline.application.segmentation.text_quality import (
@@ -99,9 +100,11 @@ def segment_video(
     config: SegmentationConfig,
     segments_root: Path,
     batch_name: str,
+    judge_adapter: LlmJudgeAdapter | None = None,
     timing_sink: object | None = None,
     stage_notifier: Callable[..., None] | None = None,
 ) -> list[dict]:
+    judge = judge_adapter or NullJudgeAdapter()
     audio_id = processed_row["audio_id"]
     video_id = processed_row.get("video_id", "")
     wav_path = Path(processed_row["audio_file_path"])
@@ -200,6 +203,7 @@ def segment_video(
             _t = perf_counter()
             hyp = asr_adapter.transcribe(seg_wav).strip()
             sink.add("asr", perf_counter() - _t)
+            hyp = judge.correct(hyp)  # LLM sửa lỗi VN (no-op nếu NullJudge)
             wer = segment_wer(text, hyp)
             if wer > config.wer_gate_max:
                 reasons = tuple(dict.fromkeys(quality.reasons + (f"wer_gate>{config.wer_gate_max}",)))
