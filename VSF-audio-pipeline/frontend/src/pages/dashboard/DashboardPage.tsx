@@ -7,6 +7,7 @@ import CreateJobForm, { type CreateJobValues } from "../../features/jobs/compone
 import JobsTable from "../../features/jobs/components/JobsTable";
 import JobSummaryCards from "../../features/jobs/components/JobSummaryCards";
 import HistoryCompareView from "../../features/timings/components/HistoryCompareView";
+import ManualWerView from "../../features/timings/components/ManualWerView";
 import StageDurationBars from "../../features/timings/components/StageDurationBars";
 import VideoBreakdownTable from "../../features/timings/components/VideoBreakdownTable";
 
@@ -182,6 +183,7 @@ export default function DashboardPage() {
             ),
           },
           { key: "history", label: "Lịch sử / So sánh", children: <HistoryCompareView /> },
+          { key: "manual-wer", label: "Manual WER", children: <ManualWerView batchOptions={batchOptions} /> },
         ]}
       />
     </Space>

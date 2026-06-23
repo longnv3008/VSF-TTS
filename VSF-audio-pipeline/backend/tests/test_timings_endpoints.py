@@ -6,6 +6,7 @@ override get_job_service with a mock, and hit routes with TestClient.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -14,6 +15,7 @@ from fastapi.testclient import TestClient
 
 from app.modules.audio_pipeline.api.routes import get_job_service, router
 from app.modules.audio_pipeline.api.schemas import (
+    BatchSegmentRead,
     BatchTimingSummary,
     StageAggregate,
     StageTimingItem,
@@ -142,6 +144,53 @@ def test_batch_timings_by_video_empty(client):
     resp = tc.get("/batches/2/timings/by-video")
     assert resp.status_code == 200
     assert resp.json() == []
+
+
+def test_list_batch_segments(client):
+    tc, svc = client
+    segment = BatchSegmentRead(
+        batch_id=2,
+        batch_name="batch_002",
+        audio_id="a1",
+        video_id="v1",
+        segment_id="seg_1",
+        start=1.2,
+        end=3.4,
+        duration=2.2,
+        text="xin chao",
+        transcript_source="vtt",
+        transcript_status="ready",
+        quality_label="speech_clean",
+        quality_score=1.0,
+        source_url="https://y/v",
+        title="Tieu de",
+        audio_url="/api/v1/audio-pipeline/batches/2/segments/seg_1/audio",
+        audio_available=True,
+    )
+    svc.list_batch_segments.return_value = [segment]
+
+    resp = tc.get("/batches/2/segments")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["segment_id"] == "seg_1"
+    assert data[0]["audio_available"] is True
+    svc.list_batch_segments.assert_called_once_with(2)
+
+
+def test_stream_batch_segment_audio(client, tmp_path: Path):
+    tc, svc = client
+    audio_file = tmp_path / "seg.wav"
+    audio_file.write_bytes(b"RIFF....WAVEfmt ")
+    svc.get_segment_audio_path.return_value = audio_file
+
+    resp = tc.get("/batches/2/segments/seg_1/audio")
+
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("audio/wav")
+    assert resp.content == b"RIFF....WAVEfmt "
+    svc.get_segment_audio_path.assert_called_once_with(2, "seg_1")
 
 
 # ---------------------------------------------------------------------------

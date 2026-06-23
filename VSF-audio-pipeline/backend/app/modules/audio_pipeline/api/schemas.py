@@ -198,3 +198,23 @@ class BatchTimingSummary(BaseModel):
     per_stage: list[StageAggregate] = Field(default_factory=list)
     total_duration_sec: float = 0.0
     params: dict = Field(default_factory=dict)
+
+
+class BatchSegmentRead(BaseModel):
+    batch_id: int
+    batch_name: str
+    audio_id: str
+    video_id: str
+    segment_id: str
+    start: float = 0.0
+    end: float = 0.0
+    duration: float = 0.0
+    text: str = ""
+    transcript_source: str | None = None
+    transcript_status: str | None = None
+    quality_label: str | None = None
+    quality_score: float | None = None
+    source_url: str | None = None
+    title: str | None = None
+    audio_url: str
+    audio_available: bool = False

@@ -90,3 +90,23 @@ export type BatchTimingSummary = {
   total_duration_sec: number;
   params: RunParams;
 };
+
+export type BatchSegment = {
+  batch_id: number;
+  batch_name: string;
+  audio_id: string;
+  video_id: string;
+  segment_id: string;
+  start: number;
+  end: number;
+  duration: number;
+  text: string;
+  transcript_source?: string | null;
+  transcript_status?: string | null;
+  quality_label?: string | null;
+  quality_score?: number | null;
+  source_url?: string | null;
+  title?: string | null;
+  audio_url: string;
+  audio_available: boolean;
+};

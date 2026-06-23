@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, BackgroundTasks, Depends
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.modules.audio_pipeline.api.schemas import (
+    BatchSegmentRead,
     BatchRead,
     BatchTimingSummary,
     IngestRequest,
@@ -72,6 +73,24 @@ async def batch_timings_by_video(
     job_service: PipelineJobService = Depends(get_job_service),
 ) -> list[VideoStageBreakdown]:
     return job_service.batch_timings_by_video(batch_id)
+
+
+@router.get("/batches/{batch_id}/segments", response_model=list[BatchSegmentRead])
+async def list_batch_segments(
+    batch_id: int,
+    job_service: PipelineJobService = Depends(get_job_service),
+) -> list[BatchSegmentRead]:
+    return job_service.list_batch_segments(batch_id)
+
+
+@router.get("/batches/{batch_id}/segments/{segment_id}/audio")
+async def stream_batch_segment_audio(
+    batch_id: int,
+    segment_id: str,
+    job_service: PipelineJobService = Depends(get_job_service),
+) -> FileResponse:
+    audio_path = job_service.get_segment_audio_path(batch_id, segment_id)
+    return FileResponse(audio_path, media_type="audio/wav", filename=audio_path.name)
 
 
 @router.get("/jobs/{job_id}/timings", response_model=list[StageTimingItem])

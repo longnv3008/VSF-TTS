@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from sqlalchemy import desc, func, text
@@ -14,6 +15,7 @@ from app.modules.audio_pipeline.domain.models import (
     PipelineJobUrl,
     PipelineStageTiming,
 )
+from app.utils.filesystem import read_csv
 from app.utils import get_logger
 
 logger = get_logger(__name__)
@@ -111,6 +113,112 @@ class PipelineJobService:
         except Exception as exc:
             error_message = format_function_error("list_batches", exc)
             logger.exception("%s", error_message)
+            raise AudioPipelineError(error_message) from exc
+
+    @staticmethod
+    def _to_float(value: str | None) -> float:
+        try:
+            return round(float(value or 0.0), 3)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @staticmethod
+    def _segment_audio_url(batch_id: int, segment_id: str) -> str:
+        return f"/api/v1/audio-pipeline/batches/{batch_id}/segments/{segment_id}/audio"
+
+    @staticmethod
+    def _resolve_audio_path(raw_path: str | None) -> Path | None:
+        cleaned = (raw_path or "").strip()
+        if not cleaned:
+            return None
+
+        candidate = Path(cleaned)
+        candidates = [candidate]
+        if candidate.is_absolute():
+            try:
+                relative_candidate = candidate.relative_to("/")
+                candidates.append(Path.cwd() / relative_candidate)
+            except ValueError:
+                pass
+        else:
+            candidates.append(Path.cwd() / candidate)
+
+        for item in candidates:
+            try:
+                if item.exists() and item.is_file():
+                    return item.resolve()
+            except OSError:
+                continue
+        return candidate if candidate.is_absolute() else (Path.cwd() / candidate)
+
+    def _metadata_csv_path(self, batch_id: int) -> tuple[PipelineBatch, Path]:
+        batch = self.get_batch(batch_id)
+        return batch, settings.metadata_dir / f"{batch.name}_segments.csv"
+
+    def list_batch_segments(self, batch_id: int) -> list[dict]:
+        try:
+            batch, csv_path = self._metadata_csv_path(batch_id)
+            rows = read_csv(csv_path)
+            segments: list[dict] = []
+            for row in rows:
+                segment_id = (row.get("segment_id") or "").strip()
+                if not segment_id:
+                    continue
+                audio_path = self._resolve_audio_path(row.get("segment_file"))
+                segments.append(
+                    {
+                        "batch_id": batch.id,
+                        "batch_name": batch.name,
+                        "audio_id": row.get("audio_id", ""),
+                        "video_id": row.get("video_id", ""),
+                        "segment_id": segment_id,
+                        "start": self._to_float(row.get("start")),
+                        "end": self._to_float(row.get("end")),
+                        "duration": self._to_float(row.get("duration")),
+                        "text": row.get("text", ""),
+                        "transcript_source": row.get("transcript_source"),
+                        "transcript_status": row.get("transcript_status"),
+                        "quality_label": row.get("quality_label"),
+                        "quality_score": self._to_float(row.get("quality_score")) if row.get("quality_score") else None,
+                        "source_url": row.get("source_url"),
+                        "title": row.get("title"),
+                        "audio_url": self._segment_audio_url(batch.id, segment_id),
+                        "audio_available": bool(audio_path and audio_path.exists() and audio_path.is_file()),
+                    }
+                )
+            return segments
+        except AudioPipelineError:
+            raise
+        except Exception as exc:
+            error_message = format_function_error("list_batch_segments", exc)
+            logger.exception("%s | batch_id=%s", error_message, batch_id)
+            raise AudioPipelineError(error_message) from exc
+
+    def get_segment_audio_path(self, batch_id: int, segment_id: str) -> Path:
+        try:
+            _batch, csv_path = self._metadata_csv_path(batch_id)
+            for row in read_csv(csv_path):
+                if (row.get("segment_id") or "").strip() != segment_id:
+                    continue
+                audio_path = self._resolve_audio_path(row.get("segment_file"))
+                if audio_path is None or not audio_path.exists() or not audio_path.is_file():
+                    raise AudioPipelineError(
+                        format_function_error(
+                            "get_segment_audio_path",
+                            FileNotFoundError(f"Segment audio not found: {segment_id}"),
+                        ),
+                        status_code=404,
+                    )
+                return audio_path
+            raise AudioPipelineError(
+                format_function_error("get_segment_audio_path", ValueError(f"Segment not found: {segment_id}")),
+                status_code=404,
+            )
+        except AudioPipelineError:
+            raise
+        except Exception as exc:
+            error_message = format_function_error("get_segment_audio_path", exc)
+            logger.exception("%s | batch_id=%s | segment_id=%s", error_message, batch_id, segment_id)
             raise AudioPipelineError(error_message) from exc
 
     def create_jobs(self, payload: IngestRequest) -> list[PipelineJob]:

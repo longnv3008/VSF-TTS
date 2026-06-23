@@ -1,5 +1,6 @@
 import { apiClient } from "../../../shared/api/client";
 import type {
+  BatchSegment,
   BatchTimingSummary,
   Job,
   StageAggregate,
@@ -100,6 +101,15 @@ export async function fetchTimingHistory(limit = 20): Promise<BatchTimingSummary
       `${AUDIO_PIPELINE_BASE_PATH}/timings/history`,
       { params: { limit } },
     );
+    return response.data;
+  } catch (error) {
+    throw new Error(toErrorMessage(error));
+  }
+}
+
+export async function fetchBatchSegments(batchId: number): Promise<BatchSegment[]> {
+  try {
+    const response = await apiClient.get<BatchSegment[]>(`${AUDIO_PIPELINE_BASE_PATH}/batches/${batchId}/segments`);
     return response.data;
   } catch (error) {
     throw new Error(toErrorMessage(error));

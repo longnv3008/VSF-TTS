@@ -47,7 +47,6 @@ export default function HistoryCompareView() {
     const a = history.find((r) => r.batch_id === selected[0]);
     const b = history.find((r) => r.batch_id === selected[1]);
     if (!a || !b) return null;
-    // a = run cũ hơn (id nhỏ thường mới hơn, nhưng so theo created_at).
     const [before, after] =
       new Date(a.created_at).getTime() <= new Date(b.created_at).getTime() ? [a, b] : [b, a];
     return { before, after };
