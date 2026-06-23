@@ -5,10 +5,7 @@ from pathlib import Path
 from time import perf_counter
 from typing import Callable, Iterator
 
-from app.modules.audio_pipeline.application.segmentation.aligner import (
-    align_units_to_vad,
-    vad_only_segments,
-)
+from app.modules.audio_pipeline.application.segmentation.aligner import vad_only_segments
 from app.modules.audio_pipeline.application.segmentation.asr_adapter import AsrAdapter
 from app.modules.audio_pipeline.application.segmentation.quality_gate import (
     SegmentQualityDecision,
@@ -19,7 +16,6 @@ from app.modules.audio_pipeline.application.segmentation.segment_writer import (
     cut_wav_segment,
     write_text,
 )
-from app.modules.audio_pipeline.application.segmentation.sentence_grouper import cues_to_sentence_units
 from app.modules.audio_pipeline.application.segmentation.text_quality import (
     has_promo_marker,
     is_blocklisted,
@@ -27,6 +23,7 @@ from app.modules.audio_pipeline.application.segmentation.text_quality import (
 )
 from app.modules.audio_pipeline.application.segmentation.types import AlignedSegment, SegmentationConfig
 from app.modules.audio_pipeline.application.segmentation.vtt_parser import parse_youtube_vtt
+from app.modules.audio_pipeline.application.segmentation.vtt_parser import extract_text_in_range
 
 
 class VadClient:  # giao diện tối thiểu để type-hint
@@ -60,7 +57,7 @@ def _merge_quality(
     return SegmentQualityDecision(keep=keep, label=label, score=score, reasons=reasons)
 
 
-def _apply_vtt_overlap(
+def _apply_segment_overlap(
     segments: list[AlignedSegment],
     *,
     duration: float,
@@ -75,14 +72,53 @@ def _apply_vtt_overlap(
         end = seg.end
         if index > 0:
             start = max(0.0, start - overlap_sec)
-        if index < len(segments) - 1:
-            end = min(duration, end + overlap_sec)
         if end - start < min_segment_sec:
             continue
         adjusted.append(
-            AlignedSegment(start, end, seg.text, seg.transcript_status, seg.vad_status)
+            AlignedSegment(
+                start,
+                end,
+                seg.text,
+                seg.transcript_status,
+                seg.vad_status,
+                text_start=seg.text_start,
+                text_end=seg.text_end,
+            )
         )
     return adjusted
+
+
+def _snap_vad_segments_to_vtt(
+    vad_segments: list[AlignedSegment],
+    cues,
+    *,
+    duration: float,
+    min_segment_sec: float,
+) -> list[AlignedSegment]:
+    snapped: list[AlignedSegment] = []
+    for seg in vad_segments:
+        start_candidates = [cue.start for cue in cues if cue.start <= seg.start]
+        end_candidates = [cue.end for cue in cues if cue.end >= seg.end]
+        if not start_candidates or not end_candidates:
+            continue
+        start = max(0.0, max(start_candidates))
+        end = min(duration, min(end_candidates))
+        if end <= start:
+            continue
+        if end - start < min_segment_sec:
+            continue
+        snapped.append(
+            AlignedSegment(
+                start,
+                end,
+                "",
+                "ready",
+                "aligned",
+                text_start=start,
+                text_end=end,
+            )
+        )
+    return snapped
 
 
 def _has_usable_vtt(subtitle_path: str) -> bool:
@@ -122,31 +158,35 @@ def segment_video(
             duration_sec=round(duration, 3),
         )
 
-    use_vtt = config.use_vtt_transcript and _has_usable_vtt(subtitle_path)
-    transcript_source = "vtt"
-    if use_vtt:
-        cues = parse_youtube_vtt(Path(subtitle_path))
-        units = cues_to_sentence_units(
-            cues, config.phrase_gap_sec, config.sentence_max_sec, config.sentence_min_sec
-        )
-        aligned: list[AlignedSegment] = align_units_to_vad(
-            units, regions, duration, config.pad_sec, config.merge_gap_sec,
-            config.min_segment_sec, config.boundary_slack_sec,
-        )
-        aligned = _apply_vtt_overlap(
-            aligned,
-            duration=duration,
-            overlap_sec=config.vtt_overlap_sec,
-            min_segment_sec=config.min_segment_sec,
-        )
-        if not aligned:  # có VTT nhưng không tạo được unit hợp lệ -> rơi về VAD-only + ASR
-            use_vtt = False
+    if not (config.use_vtt_transcript and _has_usable_vtt(subtitle_path)):
+        sink.flush()
+        return []
 
-    if not use_vtt:
-        transcript_source = "asr"
-        aligned = vad_only_segments(
-            regions, duration, config.pad_sec, config.min_segment_sec, config.sentence_max_sec
-        )
+    transcript_source = "vtt"
+    cues = parse_youtube_vtt(Path(subtitle_path))
+    vad_seed_segments = vad_only_segments(
+        regions,
+        duration,
+        0.0,
+        config.min_segment_sec,
+        config.sentence_max_sec,
+        config.merge_gap_sec,
+    )
+    aligned = _snap_vad_segments_to_vtt(
+        vad_seed_segments,
+        cues,
+        duration=duration,
+        min_segment_sec=config.min_segment_sec,
+    )
+    aligned = _apply_segment_overlap(
+        aligned,
+        duration=duration,
+        overlap_sec=config.vtt_overlap_sec,
+        min_segment_sec=config.min_segment_sec,
+    )
+    if not aligned:
+        sink.flush()
+        return []
 
     out_dir = segments_root / batch_name / audio_id
     rows: list[dict] = []
@@ -169,21 +209,10 @@ def segment_video(
                 chunk_ms=config.quality_gate_chunk_ms,
             )
 
-        text = seg.text
-        transcript_status = seg.transcript_status
-        if transcript_source == "asr" and quality.keep:
-            _t = perf_counter()
-            # Adapter đã hardening + clean_transcript + chuẩn hóa VLSP nội bộ.
-            text = asr_adapter.transcribe(seg_wav).strip()
-            sink.add("asr", perf_counter() - _t)
-            transcript_status = "ready" if text else "missing"
-        elif transcript_source == "vtt":
-            # VTT path: loại caption ảo giác phổ biến (exact + promo substring) + chuẩn hóa VLSP.
-            text = "" if (is_blocklisted(text) or has_promo_marker(text)) else normalize_vlsp(text)
-            transcript_status = seg.transcript_status if text else "missing"
-        else:
-            text = ""
-            transcript_status = "missing"
+        # VTT path: loại caption ảo giác phổ biến (exact + promo substring) + chuẩn hóa VLSP.
+        text = extract_text_in_range(cues, seg.start, seg.end)
+        text = "" if (is_blocklisted(text) or has_promo_marker(text)) else normalize_vlsp(text)
+        transcript_status = seg.transcript_status if text else "missing"
 
         if config.quality_gate_enabled:
             text_quality = gate_text(

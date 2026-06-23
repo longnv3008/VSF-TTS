@@ -12,6 +12,7 @@ TIMESTAMP_RE = re.compile(
 )
 INLINE_TIMESTAMP_RE = re.compile(r"<\d{2}:\d{2}:\d{2}\.\d{3}>|<\d{2}:\d{2}\.\d{3}>")
 TAG_RE = re.compile(r"<[^>]+>")
+NON_TIMESTAMP_TAG_RE = re.compile(r"<(?!/?\d{2}:\d{2}(?::\d{2})?\.\d{3}>)[^>]+>")
 SPACE_RE = re.compile(r"\s+")
 
 
@@ -55,6 +56,95 @@ def strip_known_prefix(text: str, prefix: str) -> str:
     return candidate or text
 
 
+def extract_timed_text(raw_line: str, cue_start: float) -> list[tuple[float, str]]:
+    sanitized = html.unescape(NON_TIMESTAMP_TAG_RE.sub("", raw_line))
+    timed_text: list[tuple[float, str]] = []
+    cursor_time = cue_start
+    cursor = 0
+
+    for match in INLINE_TIMESTAMP_RE.finditer(sanitized):
+        segment = SPACE_RE.sub(" ", sanitized[cursor:match.start()]).strip()
+        if segment:
+            timed_text.append((cursor_time, segment))
+        cursor_time = parse_timecode(match.group()[1:-1])
+        cursor = match.end()
+
+    tail = SPACE_RE.sub(" ", sanitized[cursor:]).strip()
+    if tail:
+        timed_text.append((cursor_time, tail))
+    return timed_text
+
+
+def trim_timed_text_prefix(
+    timed_text: list[tuple[float, str]],
+    prefix: str,
+) -> list[tuple[float, str]]:
+    prefix_words = prefix.split()
+    if not prefix_words:
+        return timed_text
+
+    words_left = list(prefix_words)
+    trimmed: list[tuple[float, str]] = []
+    for start, chunk in timed_text:
+        chunk_words = chunk.split()
+        if not words_left:
+            trimmed.append((start, chunk))
+            continue
+
+        consume = 0
+        while (
+            consume < len(chunk_words)
+            and words_left
+            and normalize_for_compare(chunk_words[consume]) == normalize_for_compare(words_left[0])
+        ):
+            consume += 1
+            words_left.pop(0)
+
+        if consume == len(chunk_words):
+            continue
+        if consume > 0:
+            remaining = " ".join(chunk_words[consume:]).strip()
+            if remaining:
+                trimmed.append((start, remaining))
+            continue
+        trimmed.append((start, chunk))
+    return trimmed
+
+
+def _cue_timed_spans(cue: TranscriptCue) -> list[tuple[float, float, str]]:
+    if cue.timed_text:
+        spans: list[tuple[float, float, str]] = []
+        for index, (chunk_start, chunk_text) in enumerate(cue.timed_text):
+            chunk_end = cue.end if index == len(cue.timed_text) - 1 else cue.timed_text[index + 1][0]
+            if chunk_end > chunk_start and chunk_text.strip():
+                spans.append((chunk_start, chunk_end, chunk_text.strip()))
+        return spans
+
+    if cue.text.strip():
+        return [(cue.start, cue.end, cue.text.strip())]
+    return []
+
+
+def extract_text_in_range(
+    cues: list[TranscriptCue],
+    start: float,
+    end: float,
+) -> str:
+    parts: list[str] = []
+    previous_norm = ""
+    for cue in cues:
+        if cue.end <= start or cue.start >= end:
+            continue
+        for span_start, span_end, chunk_text in _cue_timed_spans(cue):
+            if span_end <= start or span_start >= end:
+                continue
+            normalized = normalize_for_compare(chunk_text)
+            if normalized and normalized != previous_norm:
+                parts.append(chunk_text)
+                previous_norm = normalized
+    return SPACE_RE.sub(" ", " ".join(parts)).strip()
+
+
 def parse_youtube_vtt(path: Path) -> list[TranscriptCue]:
     text = read_text_with_fallback(path)
     lines = text.splitlines()
@@ -78,6 +168,7 @@ def parse_youtube_vtt(path: Path) -> list[TranscriptCue]:
             i += 1
 
         cleaned_lines: list[str] = []
+        timed_lines: list[list[tuple[float, str]]] = []
         for raw_line in raw_lines:
             cleaned = clean_caption_text(raw_line)
             if not cleaned:
@@ -85,20 +176,26 @@ def parse_youtube_vtt(path: Path) -> list[TranscriptCue]:
             if cleaned_lines and normalize_for_compare(cleaned) == normalize_for_compare(cleaned_lines[-1]):
                 continue
             cleaned_lines.append(cleaned)
+            timed_lines.append(extract_timed_text(raw_line, start))
 
         if previous_visible and len(cleaned_lines) > 1:
             if normalize_for_compare(cleaned_lines[0]) == normalize_for_compare(previous_visible):
                 cleaned_lines = cleaned_lines[1:]
+                timed_lines = timed_lines[1:]
 
         if not cleaned_lines:
             continue
 
         caption_text = SPACE_RE.sub(" ", " ".join(cleaned_lines)).strip()
+        timed_text = [item for line in timed_lines for item in line]
         if previous_visible:
-            caption_text = strip_known_prefix(caption_text, previous_visible)
+            stripped = strip_known_prefix(caption_text, previous_visible)
+            if stripped != caption_text:
+                timed_text = trim_timed_text_prefix(timed_text, previous_visible)
+            caption_text = stripped
 
         if caption_text and normalize_for_compare(caption_text) != normalize_for_compare(previous_visible):
-            cues.append(TranscriptCue(start=start, end=end, text=caption_text))
+            cues.append(TranscriptCue(start=start, end=end, text=caption_text, timed_text=tuple(timed_text)))
 
         previous_visible = cleaned_lines[-1]
 

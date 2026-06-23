@@ -60,7 +60,17 @@ def align_units_to_vad(
         end = min(duration, end + pad_sec)
         if end - start < min_segment_sec:
             continue
-        segments.append(AlignedSegment(start, end, unit.text, "ready", vad_status))
+        segments.append(
+            AlignedSegment(
+                start,
+                end,
+                unit.text,
+                "ready",
+                vad_status,
+                text_start=unit.start,
+                text_end=unit.end,
+            )
+        )
     return segments
 
 
@@ -70,15 +80,69 @@ def vad_only_segments(
     pad_sec: float,
     min_segment_sec: float,
     max_segment_sec: float,
+    merge_gap_sec: float = 0.0,
 ) -> list[AlignedSegment]:
+    merged_regions = merge_regions(vad_regions, merge_gap_sec)
     segments: list[AlignedSegment] = []
-    for region in vad_regions:
-        start = max(0.0, region.start - pad_sec)
-        end = min(duration, region.end + pad_sec)
-        cursor = start
-        while cursor < end:
-            chunk_end = min(end, cursor + max_segment_sec) if max_segment_sec > 0 else end
-            if chunk_end - cursor >= min_segment_sec:
-                segments.append(AlignedSegment(cursor, chunk_end, "", "missing", "speech_region"))
-            cursor = chunk_end
+    current_start: float | None = None
+    current_end: float | None = None
+
+    def flush() -> None:
+        nonlocal current_start, current_end
+        if current_start is None or current_end is None:
+            current_start, current_end = None, None
+            return
+        start = max(0.0, current_start - pad_sec)
+        end = min(duration, current_end + pad_sec)
+        if end - start < min_segment_sec:
+            current_start, current_end = None, None
+            return
+
+        if max_segment_sec > 0 and end - start > max_segment_sec:
+            cursor = start
+            while cursor < end:
+                chunk_end = min(end, cursor + max_segment_sec)
+                if chunk_end - cursor >= min_segment_sec:
+                    segments.append(
+                        AlignedSegment(
+                            cursor,
+                            chunk_end,
+                            "",
+                            "missing",
+                            "speech_region",
+                            text_start=cursor,
+                            text_end=chunk_end,
+                        )
+                    )
+                cursor = chunk_end
+        else:
+            segments.append(
+                AlignedSegment(
+                    start,
+                    end,
+                    "",
+                    "missing",
+                    "speech_region",
+                    text_start=start,
+                    text_end=end,
+                )
+            )
+        current_start, current_end = None, None
+
+    for region in merged_regions:
+        if current_start is None or current_end is None:
+            current_start, current_end = region.start, region.end
+            continue
+
+        proposed_start = max(0.0, current_start - pad_sec)
+        proposed_end = min(duration, region.end + pad_sec)
+        proposed_duration = proposed_end - proposed_start
+        if max_segment_sec > 0 and proposed_duration > max_segment_sec:
+            flush()
+            current_start, current_end = region.start, region.end
+            continue
+
+        current_end = max(current_end, region.end)
+
+    flush()
     return segments

@@ -8,6 +8,7 @@ class TranscriptCue:
     start: float
     end: float
     text: str
+    timed_text: tuple[tuple[float, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -30,6 +31,8 @@ class AlignedSegment:
     text: str
     transcript_status: str  # "ready" | "missing"
     vad_status: str         # "aligned" | "no_overlap" | "speech_region"
+    text_start: float | None = None
+    text_end: float | None = None
 
 
 @dataclass(frozen=True)
@@ -47,7 +50,7 @@ class SegmentationConfig:
     min_segment_sec: float
     boundary_slack_sec: float
     merge_gap_sec: float
-    vtt_overlap_sec: float = 0.2
+    vtt_overlap_sec: float = 0.0
     quality_gate_enabled: bool = False
     quality_gate_min_rms: float = 0.015
     quality_gate_min_peak: float = 0.05

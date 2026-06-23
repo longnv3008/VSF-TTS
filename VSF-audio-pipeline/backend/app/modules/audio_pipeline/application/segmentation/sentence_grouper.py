@@ -8,6 +8,81 @@ SPACE_RE = re.compile(r"\s+")
 SENTENCE_END_RE = re.compile(r"[.!?。！？…]+[\"')\]]*$")
 
 
+def _is_sentence_start_char(char: str) -> bool:
+    return char.isalpha() and char == char.upper()
+
+
+def _split_text_on_sentence_boundaries(text: str) -> list[str]:
+    normalized = SPACE_RE.sub(" ", text).strip()
+    if not normalized:
+        return []
+
+    parts: list[str] = []
+    start = 0
+    index = 0
+    while index < len(normalized):
+        if normalized[index] not in ".!?。！？…":
+            index += 1
+            continue
+
+        boundary = index + 1
+        while boundary < len(normalized) and normalized[boundary] in "\"')]}":
+            boundary += 1
+        lookahead = boundary
+        while lookahead < len(normalized) and normalized[lookahead].isspace():
+            lookahead += 1
+
+        if lookahead < len(normalized) and _is_sentence_start_char(normalized[lookahead]):
+            part = normalized[start:boundary].strip()
+            if part:
+                parts.append(part)
+            start = lookahead
+            index = lookahead
+            continue
+
+        index = boundary
+
+    tail = normalized[start:].strip()
+    if tail:
+        parts.append(tail)
+    return parts
+
+
+def split_sentence_cues(cues: list[TranscriptCue]) -> list[TranscriptCue]:
+    split: list[TranscriptCue] = []
+    for cue in cues:
+        parts = _split_text_on_sentence_boundaries(cue.text)
+        if len(parts) < 2:
+            split.append(cue)
+            continue
+
+        token_starts: list[float] = []
+        for chunk_start, chunk_text in cue.timed_text:
+            token_starts.extend([chunk_start] * len(chunk_text.split()))
+
+        if len(token_starts) == len(cue.text.split()):
+            cursor = 0
+            for index, part in enumerate(parts):
+                part_token_count = len(part.split())
+                part_start = token_starts[cursor]
+                cursor += part_token_count
+                part_end = cue.end if cursor >= len(token_starts) else token_starts[cursor]
+                split.append(TranscriptCue(start=part_start, end=part_end, text=part))
+            continue
+
+        weights = [max(1, len(part.split())) for part in parts]
+        total_weight = sum(weights)
+        cursor_time = cue.start
+        for index, (part, weight) in enumerate(zip(parts, weights)):
+            if index == len(parts) - 1:
+                part_end = cue.end
+            else:
+                part_end = cursor_time + ((cue.end - cue.start) * weight / total_weight)
+            split.append(TranscriptCue(start=cursor_time, end=part_end, text=part))
+            cursor_time = part_end
+    return split
+
+
 def split_long_cues(cues: list[TranscriptCue], max_sentence_sec: float) -> list[TranscriptCue]:
     split: list[TranscriptCue] = []
     for cue in cues:
@@ -39,11 +114,13 @@ def cues_to_sentence_units(
     max_sentence_sec: float,
     min_sentence_sec: float,
 ) -> list[SentenceUnit]:
+    cues = split_sentence_cues(cues)
     cues = split_long_cues(cues, max_sentence_sec)
     units: list[SentenceUnit] = []
     words: list[str] = []
     start: float | None = None
     end: float | None = None
+    hard_max_sentence_sec = max_sentence_sec * 1.5 if max_sentence_sec > 0 else 0.0
 
     def flush() -> None:
         nonlocal words, start, end
@@ -63,8 +140,7 @@ def cues_to_sentence_units(
         if start is not None and end is not None:
             gap = cue.start - end
             duration = end - start
-            projected_duration = cue.end - start
-            if gap >= phrase_gap_sec or duration >= max_sentence_sec or projected_duration > max_sentence_sec:
+            if gap >= phrase_gap_sec or (hard_max_sentence_sec > 0 and duration >= hard_max_sentence_sec):
                 flush()
 
         if start is None:
@@ -75,7 +151,7 @@ def cues_to_sentence_units(
         duration = end - start
         if SENTENCE_END_RE.search(cue.text) and duration >= min_sentence_sec:
             flush()
-        elif duration >= max_sentence_sec:
+        elif hard_max_sentence_sec > 0 and duration >= hard_max_sentence_sec:
             flush()
 
     flush()
