@@ -25,6 +25,7 @@ from app.modules.audio_pipeline.application.separation.demucs_separator import (
     separate_vocals as demucs_separate_vocals,
 )
 from app.modules.audio_pipeline.application.separation.noise_probe import measure_noise_floor_db
+from app.modules.audio_pipeline.application.segmentation.music_detect import DEFAULT_MUSIC_KEYWORDS
 from app.modules.audio_pipeline.application.segmentation.types import SegmentationConfig
 from app.modules.audio_pipeline.application.segmentation.vad_local_client import OnnxVadClient
 from app.modules.audio_pipeline.application.stage_timing import (
@@ -36,6 +37,12 @@ from app.utils import get_logger, send_telegram_log
 from app.utils.filesystem import ensure_dir, read_csv, write_csv
 
 logger = get_logger(__name__)
+
+
+def _music_keywords(extra_csv: str) -> tuple[str, ...]:
+    """Default keywords + keyword bổ sung (CSV env), casefold + bỏ rỗng."""
+    extras = tuple(k.strip() for k in extra_csv.split(",") if k.strip())
+    return DEFAULT_MUSIC_KEYWORDS + extras
 
 
 def build_normalize_cmd(
@@ -1587,6 +1594,8 @@ class AudioPipelineService:
             quality_gate_min_tokens_for_long_segment=settings.quality_gate_min_tokens_for_long_segment,
             wer_gate_enabled=settings.wer_gate_enabled,
             wer_gate_max=settings.wer_gate_max,
+            wer_gate_skip_music=settings.wer_gate_skip_music,
+            wer_gate_music_keywords=_music_keywords(settings.wer_gate_music_keywords),
         )
 
     def _build_segment_dependencies(self):
