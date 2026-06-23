@@ -13,6 +13,13 @@ class TranscriptCue:
 
 
 @dataclass(frozen=True)
+class WordToken:
+    text: str
+    start: float
+    end: float
+
+
+@dataclass(frozen=True)
 class SentenceUnit:
     start: float
     end: float

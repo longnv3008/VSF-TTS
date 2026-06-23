@@ -4,7 +4,7 @@ import html
 import re
 from pathlib import Path
 
-from app.modules.audio_pipeline.application.segmentation.types import TranscriptCue
+from app.modules.audio_pipeline.application.segmentation.types import TranscriptCue, WordToken
 
 TIMESTAMP_RE = re.compile(
     r"(?P<start>(?:\d{2}:)?\d{2}:\d{2}\.\d{3})\s+-->\s+"
@@ -13,6 +13,7 @@ TIMESTAMP_RE = re.compile(
 INLINE_TIMESTAMP_RE = re.compile(r"<\d{2}:\d{2}:\d{2}\.\d{3}>|<\d{2}:\d{2}\.\d{3}>")
 TAG_RE = re.compile(r"<[^>]+>")
 SPACE_RE = re.compile(r"\s+")
+INLINE_TS_CAPTURE_RE = re.compile(r"<((?:\d{2}:)?\d{2}:\d{2}\.\d{3})>")
 
 
 def parse_timecode(value: str) -> float:
@@ -103,3 +104,51 @@ def parse_youtube_vtt(path: Path) -> list[TranscriptCue]:
         previous_visible = cleaned_lines[-1]
 
     return cues
+
+
+def _extract_cue_words(line: str, cue_start: float, cue_end: float) -> list[WordToken]:
+    matches = list(INLINE_TS_CAPTURE_RE.finditer(line))
+    if not matches:
+        return []
+    # anchors: (start_time, raw_text_chunk) — head shares cue_start, each ts marks a word.
+    anchors: list[tuple[float, str]] = [(cue_start, line[: matches[0].start()])]
+    for idx, match in enumerate(matches):
+        chunk_end = matches[idx + 1].start() if idx + 1 < len(matches) else len(line)
+        anchors.append((parse_timecode(match.group(1)), line[match.end():chunk_end]))
+
+    cleaned = [(t, clean_caption_text(chunk)) for t, chunk in anchors]
+    cleaned = [(t, chunk) for t, chunk in cleaned if chunk]
+    if not cleaned:
+        return []
+
+    words: list[WordToken] = []
+    for idx, (t, chunk) in enumerate(cleaned):
+        nxt = cleaned[idx + 1][0] if idx + 1 < len(cleaned) else cue_end
+        parts = chunk.split()
+        span = max(0.0, nxt - t)
+        step = span / len(parts) if len(parts) > 1 else span
+        for j, word in enumerate(parts):
+            w_start = t + j * step
+            w_end = nxt if j == len(parts) - 1 else t + (j + 1) * step
+            words.append(WordToken(text=word, start=w_start, end=w_end))
+    return words
+
+
+def parse_youtube_vtt_words(path: Path) -> list[WordToken]:
+    text = read_text_with_fallback(path)
+    lines = text.splitlines()
+    words: list[WordToken] = []
+    i = 0
+    while i < len(lines):
+        match = TIMESTAMP_RE.search(lines[i])
+        if not match:
+            i += 1
+            continue
+        cue_start = parse_timecode(match.group("start"))
+        cue_end = parse_timecode(match.group("end"))
+        i += 1
+        while i < len(lines) and lines[i].strip():
+            if INLINE_TS_CAPTURE_RE.search(lines[i]):
+                words.extend(_extract_cue_words(lines[i], cue_start, cue_end))
+            i += 1
+    return words
