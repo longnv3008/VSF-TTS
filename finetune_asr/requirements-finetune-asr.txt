@@ -1,0 +1,12 @@
+# Env riêng cho fine-tune ASR (LoRA Whisper). Tách khỏi backend/demucs.
+# Cài: python -m venv .venv-finetune-asr && pip install -r requirements-finetune-asr.txt
+# Torch theo CUDA của máy (xem .venv-demucs-cu128 để biết build phù hợp).
+torch>=2.2
+transformers>=4.44
+peft>=0.11
+datasets>=2.20
+accelerate>=0.33
+evaluate>=0.4
+soundfile>=0.12
+librosa>=0.10
+ctranslate2>=4.0
