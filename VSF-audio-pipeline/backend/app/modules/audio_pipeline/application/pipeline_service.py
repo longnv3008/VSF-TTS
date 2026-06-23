@@ -1588,6 +1588,7 @@ class AudioPipelineService:
             boundary_slack_sec=settings.segment_boundary_slack_sec,
             merge_gap_sec=settings.segment_merge_gap_sec,
             vtt_overlap_sec=settings.vtt_overlap_sec,
+            segmentation_word_split=settings.segmentation_word_split,
             quality_gate_enabled=settings.quality_gate_enabled,
             quality_gate_min_rms=settings.quality_gate_min_rms,
             quality_gate_min_peak=settings.quality_gate_min_peak,

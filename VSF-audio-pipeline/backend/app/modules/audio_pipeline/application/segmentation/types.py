@@ -57,6 +57,7 @@ class SegmentationConfig:
     boundary_slack_sec: float
     merge_gap_sec: float
     vtt_overlap_sec: float = 0.2
+    segmentation_word_split: bool = True
     quality_gate_enabled: bool = False
     quality_gate_min_rms: float = 0.015
     quality_gate_min_peak: float = 0.05

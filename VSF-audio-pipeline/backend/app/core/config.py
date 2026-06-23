@@ -86,6 +86,7 @@ class Settings(BaseSettings):
     segment_boundary_slack_sec: float = Field(default=0.8, alias="SEGMENT_BOUNDARY_SLACK_SEC")
     segment_merge_gap_sec: float = Field(default=0.5, alias="SEGMENT_MERGE_GAP_SEC")
     vtt_overlap_sec: float = Field(default=0.2, alias="VTT_OVERLAP_SEC")
+    segmentation_word_split: bool = Field(default=True, alias="SEGMENTATION_WORD_SPLIT")
     # Chuẩn hóa âm lượng (EBU R128 loudnorm) khi normalize audio, không chỉ đổi format.
     loudnorm_enabled: bool = Field(default=True, alias="LOUDNORM_ENABLED")
     loudnorm_i: float = Field(default=-16.0, alias="LOUDNORM_I")

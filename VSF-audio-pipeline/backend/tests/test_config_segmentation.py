@@ -7,6 +7,7 @@ _SEGMENTATION_ENV_VARS = [
     "SENTENCE_MIN_SEC", "PHRASE_GAP_SEC", "SEGMENT_PAD_SEC",
     "SEGMENT_MIN_SEC", "SEGMENT_BOUNDARY_SLACK_SEC", "SEGMENT_MERGE_GAP_SEC",
     "ASR_MODEL", "ASR_DEVICE", "ASR_NO_SPEECH_THRESHOLD", "ASR_LOGPROB_MIN", "ASR_VAD_FILTER",
+    "SEGMENTATION_WORD_SPLIT",
 ]
 
 
@@ -28,3 +29,4 @@ def test_segmentation_settings_defaults(monkeypatch):
     assert s.segment_min_sec == 0.3
     assert s.asr_model == "large-v3"
     assert s.asr_device == "cuda"
+    assert s.segmentation_word_split is True
