@@ -57,6 +57,8 @@ services:
       DEMUCS_DEVICE: ${DEMUCS_DEVICE:-auto}
       DEMUCS_MODEL: ${DEMUCS_MODEL:-htdemucs}
       ASR_DEVICE: ${ASR_DEVICE:-auto}
+      WER_GATE_ENABLED: ${WER_GATE_ENABLED:-false}
+      WER_GATE_MAX: ${WER_GATE_MAX:-0.3}
     ports:
       - "${BACKEND_PORT:-8001}:8000"
     volumes:
