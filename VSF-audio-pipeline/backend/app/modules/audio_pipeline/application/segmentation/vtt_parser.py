@@ -107,6 +107,12 @@ def parse_youtube_vtt(path: Path) -> list[TranscriptCue]:
 
 
 def _extract_cue_words(line: str, cue_start: float, cue_end: float) -> list[WordToken]:
+    """Words from ONE timestamped caption line: the head (text before the first ts)
+    shares cue_start, each `<ts>` marks the next word. Assumes YouTube's
+    one-timestamped-line-per-cue rolling format. A cue with a second timestamped line
+    would give that line's head cue_start too — words are still captured, only that
+    head's start time is early; harmless for sentence-level cutting downstream.
+    """
     matches = list(INLINE_TS_CAPTURE_RE.finditer(line))
     if not matches:
         return []
