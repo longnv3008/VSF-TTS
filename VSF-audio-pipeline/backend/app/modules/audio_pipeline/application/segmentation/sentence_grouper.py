@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import re
 
-from app.modules.audio_pipeline.application.segmentation.types import SentenceUnit, TranscriptCue
+from app.modules.audio_pipeline.application.segmentation.types import SentenceUnit, TranscriptCue, WordToken
 
 SPACE_RE = re.compile(r"\s+")
 SENTENCE_END_RE = re.compile(r"[.!?。！？…]+[\"')\]]*$")
+PHRASE_END_RE = re.compile(r"[,;:]$")
 
 
 def split_long_cues(cues: list[TranscriptCue], max_sentence_sec: float) -> list[TranscriptCue]:
@@ -79,4 +80,64 @@ def cues_to_sentence_units(
             flush()
 
     flush()
+    return units
+
+
+def _split_index(buf: list[WordToken], min_sentence_sec: float, phrase_gap_sec: float) -> int:
+    """Index to cut an over-cap buffer: head = buf[:idx], tail = buf[idx:]."""
+    start = buf[0].start
+    comma_idx: int | None = None
+    for i, word in enumerate(buf[:-1]):
+        if PHRASE_END_RE.search(word.text) and (word.end - start) >= min_sentence_sec:
+            comma_idx = i
+    if comma_idx is not None:
+        return comma_idx + 1
+
+    best_gap = phrase_gap_sec
+    best_i: int | None = None
+    for i in range(len(buf) - 1):
+        gap = buf[i + 1].start - buf[i].end
+        if gap >= best_gap and (buf[i].end - start) >= min_sentence_sec:
+            best_gap, best_i = gap, i
+    if best_i is not None:
+        return best_i + 1
+
+    return len(buf)  # no usable phrase boundary -> hard-cut whole buffer
+
+
+def words_to_sentence_units(
+    words: list[WordToken],
+    max_sentence_sec: float,
+    min_sentence_sec: float,
+    phrase_gap_sec: float,
+) -> list[SentenceUnit]:
+    units: list[SentenceUnit] = []
+
+    def emit(head: list[WordToken]) -> None:
+        text = SPACE_RE.sub(" ", " ".join(w.text for w in head)).strip()
+        if not text:
+            return
+        start, end = head[0].start, head[-1].end
+        if end <= start:
+            return
+        if end - start >= min_sentence_sec or not units:
+            units.append(SentenceUnit(start=start, end=end, text=text))
+        else:
+            prev = units.pop()
+            merged = SPACE_RE.sub(" ", f"{prev.text} {text}").strip()
+            units.append(SentenceUnit(prev.start, end, merged))
+
+    buf: list[WordToken] = []
+    for word in words:
+        buf.append(word)
+        duration = buf[-1].end - buf[0].start
+        if SENTENCE_END_RE.search(word.text) and duration >= min_sentence_sec:
+            emit(buf)
+            buf = []
+        elif duration >= max_sentence_sec:
+            cut = _split_index(buf, min_sentence_sec, phrase_gap_sec)
+            emit(buf[:cut])
+            buf = buf[cut:]
+    if buf:
+        emit(buf)
     return units
