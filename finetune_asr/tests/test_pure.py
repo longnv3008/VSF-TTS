@@ -4,6 +4,7 @@ import pytest
 from finetune_asr.text_norm import normalize_target
 from finetune_asr.wer_eval import score_wer
 from finetune_asr.export_ct2 import build_ct2_convert_cmd
+from finetune_asr.lora_config import lora_params
 
 
 # --- normalize_target ---
@@ -51,3 +52,18 @@ def test_ct2_cmd_shape():
     assert "--model" in cmd and "hf_model_dir" in cmd
     assert "--output_dir" in cmd and "out_ct2" in cmd
     assert "--quantization" in cmd and "float16" in cmd
+
+
+# --- lora_params ---
+
+def test_lora_params_defaults():
+    p = lora_params()
+    assert p["r"] == 8
+    assert p["lora_alpha"] == 16
+    assert p["target_modules"] == ["q_proj", "v_proj"]
+    assert 0.0 <= p["lora_dropout"] <= 1.0
+
+
+def test_lora_params_override_rank():
+    p = lora_params(rank=16, alpha=32, dropout=0.1)
+    assert p["r"] == 16 and p["lora_alpha"] == 32 and p["lora_dropout"] == 0.1
