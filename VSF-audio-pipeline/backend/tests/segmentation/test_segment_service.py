@@ -416,3 +416,48 @@ def test_timing_sink_null_by_default(make_wav, tmp_path):
         config=_cfg(), segments_root=tmp_path / "segments", batch_name="b1",
     )
     assert len(rows) == 1
+
+
+# One long sentence with a comma. Word times: một[0,2] hai,[2,8] ba.[8,10].
+# At cap=5 the cue path chops into 3 fragments (incl. a bare "một"); the word path
+# splits once at the comma -> 2 clause-complete segments.
+LONG_TS_VTT = """WEBVTT
+Kind: captions
+
+00:00:00.000 --> 00:00:10.000
+một<00:00:02.000><c> hai,</c><00:00:08.000><c> ba.</c>
+"""
+
+
+def test_word_split_path_splits_long_sentence_at_comma(make_wav, tmp_path):
+    # Flag default ON -> word path: 2 segments, no mid-clause bare "một".
+    cfg = SegmentationConfig(**{**_cfg().__dict__, "sentence_max_sec": 5.0})
+    wav = make_wav(seconds=11.0, name="yt_vid.wav")
+    vtt = tmp_path / "vid__t.vi.vtt"
+    vtt.write_text(LONG_TS_VTT, encoding="utf-8")
+    row = {"audio_id": "yt_vid", "video_id": "vid", "title": "t",
+           "source_url": "u", "audio_file_path": str(wav), "subtitle_file_path": str(vtt)}
+    rows = segment_video(
+        row, vad_client=_FakeVad([SpeechRegion(0.0, 10.0)], 11.0), asr_adapter=_FakeAsr(),
+        config=cfg, segments_root=tmp_path / "segments", batch_name="b1",
+    )
+    assert len(rows) == 2
+    assert rows[0]["text"] == "một hai,"
+    assert rows[1]["text"] == "ba."
+
+
+def test_word_split_flag_off_uses_cue_path(make_wav, tmp_path):
+    # Flag OFF -> cue path: the old choppy 3-way split incl. bare "một" (regression guard).
+    cfg = SegmentationConfig(**{**_cfg().__dict__, "sentence_max_sec": 5.0,
+                                "segmentation_word_split": False})
+    wav = make_wav(seconds=11.0, name="yt_vid.wav")
+    vtt = tmp_path / "vid__t.vi.vtt"
+    vtt.write_text(LONG_TS_VTT, encoding="utf-8")
+    row = {"audio_id": "yt_vid", "video_id": "vid", "title": "t",
+           "source_url": "u", "audio_file_path": str(wav), "subtitle_file_path": str(vtt)}
+    rows = segment_video(
+        row, vad_client=_FakeVad([SpeechRegion(0.0, 10.0)], 11.0), asr_adapter=_FakeAsr(),
+        config=cfg, segments_root=tmp_path / "segments", batch_name="b1",
+    )
+    assert len(rows) == 3
+    assert rows[0]["text"] == "một"

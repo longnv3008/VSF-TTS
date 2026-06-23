@@ -18,14 +18,20 @@ from app.modules.audio_pipeline.application.segmentation.segment_writer import (
 )
 from app.modules.audio_pipeline.application.segmentation.llm_judge import LlmJudgeAdapter, NullJudgeAdapter
 from app.modules.audio_pipeline.application.segmentation.music_detect import is_music_title
-from app.modules.audio_pipeline.application.segmentation.sentence_grouper import cues_to_sentence_units
+from app.modules.audio_pipeline.application.segmentation.sentence_grouper import (
+    cues_to_sentence_units,
+    words_to_sentence_units,
+)
 from app.modules.audio_pipeline.application.segmentation.text_quality import (
     has_promo_marker,
     is_blocklisted,
     normalize_vlsp,
 )
 from app.modules.audio_pipeline.application.segmentation.types import AlignedSegment, SegmentationConfig
-from app.modules.audio_pipeline.application.segmentation.vtt_parser import parse_youtube_vtt
+from app.modules.audio_pipeline.application.segmentation.vtt_parser import (
+    parse_youtube_vtt,
+    parse_youtube_vtt_words,
+)
 from app.modules.audio_pipeline.application.segmentation.wer_gate import segment_wer
 
 
@@ -137,10 +143,18 @@ def segment_video(
         return []
 
     transcript_source = "vtt"
-    cues = parse_youtube_vtt(Path(subtitle_path))
-    units = cues_to_sentence_units(
-        cues, config.phrase_gap_sec, config.sentence_max_sec, config.sentence_min_sec
-    )
+    units = []
+    if config.segmentation_word_split:
+        words = parse_youtube_vtt_words(Path(subtitle_path))
+        if words:
+            units = words_to_sentence_units(
+                words, config.sentence_max_sec, config.sentence_min_sec, config.phrase_gap_sec
+            )
+    if not units:
+        cues = parse_youtube_vtt(Path(subtitle_path))
+        units = cues_to_sentence_units(
+            cues, config.phrase_gap_sec, config.sentence_max_sec, config.sentence_min_sec
+        )
     aligned: list[AlignedSegment] = align_units_to_vad(
         units, regions, duration, config.pad_sec, config.merge_gap_sec,
         config.min_segment_sec, config.boundary_slack_sec,
