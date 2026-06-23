@@ -1,20 +1,19 @@
 """WER gate: so ASR (hypothesis) với VTT (reference) ở mức từng segment.
 
 Dùng để QA alignment sau khi bỏ ASR fallback — segment có WER cao nghĩa là
-caption VTT lệch tiếng nói thật -> flag review. Token-WER tối giản, tự chứa
-(Levenshtein), cùng phương pháp với eval/wer/vsf_wer/wer.py nhưng không import
-chéo (backend là uv project riêng). Báo cáo offline canonical vẫn ở eval/wer.
+caption VTT lệch tiếng nói thật -> flag review. Token-WER (Levenshtein) trên text
+đã chuẩn hóa qua wer_canonical.normalize (markup-strip + collapse ad-lib, giữ dấu)
+để markup/ad-lib trong VTT không phồng WER giả. Báo cáo offline canonical vẫn ở eval/wer.
 """
 
 from __future__ import annotations
 
-import re
-
-_PUNCT_RE = re.compile(r"[^\w\s]", re.UNICODE)
+from app.modules.audio_pipeline.application.segmentation.wer_canonical import normalize, tokens
 
 
 def _tokens(text: str) -> list[str]:
-    return _PUNCT_RE.sub(" ", text.lower()).split()
+    """Token mức từ trên text đã chuẩn hóa (markup-strip + collapse ad-lib, giữ dấu)."""
+    return tokens(normalize(text, level="normalized", keep_diacritics=True))
 
 
 def _edit_distance(ref: list[str], hyp: list[str]) -> int:

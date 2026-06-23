@@ -28,3 +28,18 @@ def test_empty_hypothesis_with_ref_is_one():
 def test_one_substitution_in_four_tokens():
     # 1 lỗi / 4 token ref = 0.25 > ngưỡng 0.05 -> sẽ bị flag.
     assert segment_wer("mot hai ba bon", "mot hai ba nam") == pytest.approx(0.25)
+
+
+def test_vtt_markup_stripped_before_wer():
+    # VTT có markup [âm nhạc]; ASR không -> markup không được tính lỗi.
+    assert segment_wer("[âm nhạc] xin chào", "xin chào") == 0.0
+
+
+def test_adlib_run_collapsed_before_wer():
+    # Run ad-lib (la la la) trong VTT bị collapse -> không phồng WER.
+    assert segment_wer("la la la xin chào", "xin chào") == 0.0
+
+
+def test_diacritics_preserved_as_substitution():
+    # Dấu thanh phonemic: "lá" != "la" -> vẫn là 1 substitution.
+    assert segment_wer("lá", "la") == pytest.approx(1.0)
