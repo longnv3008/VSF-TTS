@@ -292,6 +292,36 @@ def test_wer_gate_skip_music_disabled_runs_gate_on_music(make_wav, tmp_path):
     assert rows[0]["transcript_status"] == "needs_review"
 
 
+class _FixedJudge:
+    """Judge giả: luôn trả câu cố định (giả lập LLM sửa hyp khớp VTT)."""
+
+    def __init__(self, text):
+        self._text = text
+        self.calls = 0
+
+    def correct(self, text):
+        self.calls += 1
+        return self._text
+
+
+def test_llm_judge_corrects_asr_so_gate_does_not_flag(make_wav, tmp_path):
+    # Gate bật + ASR lệch, nhưng judge sửa hyp khớp VTT -> WER 0 -> không flag.
+    cfg = SegmentationConfig(**{**_cfg().__dict__, "wer_gate_enabled": True, "wer_gate_max": 0.05})
+    asr = _CountingAsr(text="hoan toan khac han")
+    judge = _FixedJudge("xin chao cac ban")
+    wav = make_wav(seconds=2.0, name="yt_vid.wav")
+    vtt = tmp_path / "vid__t.vi.vtt"
+    vtt.write_text(VTT, encoding="utf-8")
+    row = {"audio_id": "yt_vid", "video_id": "vid", "title": "t",
+           "source_url": "u", "audio_file_path": str(wav), "subtitle_file_path": str(vtt)}
+    rows = segment_video(
+        row, vad_client=_FakeVad([SpeechRegion(0.0, 1.0)], 2.0), asr_adapter=asr,
+        judge_adapter=judge, config=cfg, segments_root=tmp_path / "segments", batch_name="b1",
+    )
+    assert judge.calls == 1
+    assert rows[0]["transcript_status"] == "ready"
+
+
 def test_wer_gate_keeps_matching_asr(make_wav, tmp_path):
     # Gate bật + ASR khớp VTT -> WER 0 -> không flag.
     cfg = SegmentationConfig(**{**_cfg().__dict__, "wer_gate_enabled": True, "wer_gate_max": 0.05})

@@ -118,6 +118,12 @@ class Settings(BaseSettings):
     wer_gate_skip_music: bool = Field(default=True, alias="WER_GATE_SKIP_MUSIC")
     # Keyword bổ sung (CSV) ngoài default; rỗng = chỉ dùng default. Vd "grey d,mck".
     wer_gate_music_keywords: str = Field(default="", alias="WER_GATE_MUSIC_KEYWORDS")
+    # LLM sửa hypothesis ASR (chính tả/đồng âm VN) trước khi so VTT -> WER đúng hơn.
+    # Tắt mặc định; bật cần Ollama chạy ở URL dưới. Fail-open nếu LLM lỗi.
+    wer_gate_llm_judge_enabled: bool = Field(default=False, alias="WER_GATE_LLM_JUDGE_ENABLED")
+    wer_gate_llm_judge_url: str = Field(default="http://localhost:11434", alias="WER_GATE_LLM_JUDGE_URL")
+    wer_gate_llm_judge_model: str = Field(default="qwen2.5:7b", alias="WER_GATE_LLM_JUDGE_MODEL")
+    wer_gate_llm_judge_timeout: float = Field(default=30.0, alias="WER_GATE_LLM_JUDGE_TIMEOUT")
 
     # Tách vocal bằng Demucs trước normalize (chạy trên raw, giữ chất lượng tách).
     # Tắt mặc định -> pipeline giữ nguyên hành vi cũ. Command trỏ env riêng có torch.

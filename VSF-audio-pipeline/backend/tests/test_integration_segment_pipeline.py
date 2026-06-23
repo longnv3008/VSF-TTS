@@ -41,7 +41,7 @@ def test_end_to_end_vtt_path(make_wav, tmp_path, monkeypatch):
     events = []
     monkeypatch.setattr(service, "segments_dir", tmp_path / "segments")
     monkeypatch.setattr(service, "metadata_dir", tmp_path / "metadata")
-    monkeypatch.setattr(service, "_build_segment_dependencies", lambda: (_FakeVad(), _FakeAsr()))
+    monkeypatch.setattr(service, "_build_segment_dependencies", lambda: (_FakeVad(), _FakeAsr(), None))
     monkeypatch.setattr(service, "_notify_url_stage", lambda **kwargs: events.append(kwargs))
 
     wav = _loud_wav(tmp_path / "yt_vid.wav", seconds=2.0)
