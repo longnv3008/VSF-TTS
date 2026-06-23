@@ -17,8 +17,10 @@ finetune_asr/
 ├── wer_eval.py         # score_wer micro (pure)
 ├── lora_config.py      # lora_params (pure) + build_lora_config (peft)
 ├── export_ct2.py       # build_ct2_convert_cmd (pure)
+├── augment.py          # pitch/speed/noise + SpecAugment (opt-in --augment)
+├── hpo.py              # Optuna HPO (suggest_params pure + run_study)
 ├── prepare_dataset.py  # B1: VIVOS -> 16kHz + target chuẩn hóa
-├── train_lora.py       # B2: LoRA train (whisper-small)
+├── train_lora.py       # B2: LoRA train (whisper-small), --augment
 ├── evaluate.py         # B3: WER baseline vs fine-tuned (+ domain refs)
 ├── requirements-finetune-asr.txt
 └── tests/test_pure.py  # unit thuần (stdlib, không torch)
@@ -37,9 +39,12 @@ python finetune_asr/prepare_dataset.py --dataset AILAB-VNUHCM/vivos --out-dir da
 # Smoke (verify stack, CPU 1 step)
 python finetune_asr/train_lora.py --data-dir data/vivos --smoke
 
-# B2: train thật (GPU)
+# B2: train thật (GPU). Thêm --augment để bật pitch/speed/noise/SpecAugment.
 python finetune_asr/train_lora.py --data-dir data/vivos --base openai/whisper-small \
-  --out-dir checkpoints/whisper_lora --epochs 3
+  --out-dir checkpoints/whisper_lora --epochs 3 --augment
+
+# B2b (tùy chọn): Optuna HPO search lr/rank/dropout theo WER
+python finetune_asr/hpo.py --n-trials 10 --data-dir data/vivos --base openai/whisper-small
 
 # B3: eval baseline vs fine-tuned
 python finetune_asr/evaluate.py --data-dir data/vivos --base openai/whisper-small        # baseline
