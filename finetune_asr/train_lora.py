@@ -45,7 +45,10 @@ def train(
     lr: float = 1e-4,
     epochs: float = 3.0,
     smoke: bool = False,
+    augment: bool = False,
 ) -> None:
+    import numpy as np
+
     from datasets import load_from_disk
     from peft import get_peft_model
     from transformers import (
@@ -60,11 +63,21 @@ def train(
     if smoke:
         train_ds = train_ds.select(range(min(2, len(train_ds))))
 
+    aug_rng = np.random.default_rng(0)
+
     def _to_features(batch: dict) -> dict:
         audio = batch["audio"]
-        batch["input_features"] = processor.feature_extractor(
-            audio["array"], sampling_rate=audio["sampling_rate"]
-        ).input_features[0]
+        array, sr = audio["array"], audio["sampling_rate"]
+        if augment:
+            from finetune_asr.augment import apply_waveform_augment
+
+            array = apply_waveform_augment(array, sr, aug_rng)
+        feats = processor.feature_extractor(array, sampling_rate=sr).input_features[0]
+        if augment:
+            from finetune_asr.augment import spec_augment
+
+            feats = spec_augment(feats, rng=aug_rng)
+        batch["input_features"] = feats
         batch["labels"] = processor.tokenizer(batch["target_text"]).input_ids
         return batch
 
@@ -109,10 +122,11 @@ def main() -> None:
     ap.add_argument("--lr", type=float, default=1e-4)
     ap.add_argument("--epochs", type=float, default=3.0)
     ap.add_argument("--smoke", action="store_true")
+    ap.add_argument("--augment", action="store_true")
     args = ap.parse_args()
     train(
         args.data_dir, args.out_dir, base=args.base, rank=args.rank,
-        lr=args.lr, epochs=args.epochs, smoke=args.smoke,
+        lr=args.lr, epochs=args.epochs, smoke=args.smoke, augment=args.augment,
     )
 
 
