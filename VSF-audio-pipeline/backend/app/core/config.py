@@ -77,7 +77,7 @@ class Settings(BaseSettings):
     vad_stop_secs: float = Field(default=0.6, alias="VAD_STOP_SECS")
     vad_chunk_ms: int = Field(default=64, alias="VAD_CHUNK_MS")
     segments_dir: Path = Field(default=Path("data/processed/segments"), alias="SEGMENTS_DIR")
-    sentence_max_sec: float = Field(default=8.0, alias="SENTENCE_MAX_SEC")
+    sentence_max_sec: float = Field(default=14.0, alias="SENTENCE_MAX_SEC")
     sentence_min_sec: float = Field(default=0.3, alias="SENTENCE_MIN_SEC")
     phrase_gap_sec: float = Field(default=0.45, alias="PHRASE_GAP_SEC")
     use_vtt_transcript: bool = Field(default=True, alias="USE_VTT_TRANSCRIPT")

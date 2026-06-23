@@ -22,7 +22,7 @@ def test_segmentation_settings_defaults(monkeypatch):
     assert s.vad_start_secs == 0.1
     assert s.vad_stop_secs == 0.6
     assert s.segments_dir.as_posix() == "data/processed/segments"
-    assert s.sentence_max_sec == 8.0
+    assert s.sentence_max_sec == 14.0
     assert s.sentence_min_sec == 0.3
     assert s.phrase_gap_sec == 0.45
     assert s.segment_pad_sec == 0.35
