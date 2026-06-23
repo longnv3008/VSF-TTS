@@ -5,6 +5,7 @@ from finetune_asr.text_norm import normalize_target
 from finetune_asr.wer_eval import score_wer
 from finetune_asr.export_ct2 import build_ct2_convert_cmd
 from finetune_asr.lora_config import lora_params
+from finetune_asr.hpo import suggest_params
 
 
 # --- normalize_target ---
@@ -67,3 +68,21 @@ def test_lora_params_defaults():
 def test_lora_params_override_rank():
     p = lora_params(rank=16, alpha=32, dropout=0.1)
     assert p["r"] == 16 and p["lora_alpha"] == 32 and p["lora_dropout"] == 0.1
+
+
+# --- suggest_params (Optuna search space, fake trial) ---
+
+class _FakeTrial:
+    def suggest_float(self, name, low, high, *, log=False):
+        return low  # giá trị biên thấp, đủ để check key + range
+
+    def suggest_categorical(self, name, choices):
+        return choices[1]
+
+
+def test_suggest_params_keys_and_ranges():
+    p = suggest_params(_FakeTrial())
+    assert set(p) == {"lr", "rank", "dropout"}
+    assert p["rank"] in (4, 8, 16, 32)
+    assert p["lr"] > 0
+    assert 0.0 <= p["dropout"] <= 0.2
