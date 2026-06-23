@@ -257,6 +257,41 @@ def test_wer_gate_flags_divergent_asr(make_wav, tmp_path):
     assert rows[0]["text"] == "xin chao cac ban."
 
 
+def test_wer_gate_skips_music_video_by_title(make_wav, tmp_path):
+    # Gate bật nhưng title là nhạc -> bỏ gate cả video: không gọi ASR, giữ ready.
+    cfg = SegmentationConfig(**{**_cfg().__dict__, "wer_gate_enabled": True, "wer_gate_max": 0.05})
+    asr = _CountingAsr(text="hoan toan khac han")
+    wav = make_wav(seconds=2.0, name="yt_vid.wav")
+    vtt = tmp_path / "vid__t.vi.vtt"
+    vtt.write_text(VTT, encoding="utf-8")
+    row = {"audio_id": "yt_vid", "video_id": "vid", "title": "toidaidot Official MV",
+           "source_url": "u", "audio_file_path": str(wav), "subtitle_file_path": str(vtt)}
+    rows = segment_video(
+        row, vad_client=_FakeVad([SpeechRegion(0.0, 1.0)], 2.0), asr_adapter=asr,
+        config=cfg, segments_root=tmp_path / "segments", batch_name="b1",
+    )
+    assert asr.calls == 0
+    assert rows[0]["transcript_status"] == "ready"
+
+
+def test_wer_gate_skip_music_disabled_runs_gate_on_music(make_wav, tmp_path):
+    # skip_music=False -> gate chạy cả title nhạc (regression hành vi cũ).
+    cfg = SegmentationConfig(**{**_cfg().__dict__, "wer_gate_enabled": True,
+                                "wer_gate_max": 0.05, "wer_gate_skip_music": False})
+    asr = _CountingAsr(text="hoan toan khac han")
+    wav = make_wav(seconds=2.0, name="yt_vid.wav")
+    vtt = tmp_path / "vid__t.vi.vtt"
+    vtt.write_text(VTT, encoding="utf-8")
+    row = {"audio_id": "yt_vid", "video_id": "vid", "title": "toidaidot Official MV",
+           "source_url": "u", "audio_file_path": str(wav), "subtitle_file_path": str(vtt)}
+    rows = segment_video(
+        row, vad_client=_FakeVad([SpeechRegion(0.0, 1.0)], 2.0), asr_adapter=asr,
+        config=cfg, segments_root=tmp_path / "segments", batch_name="b1",
+    )
+    assert asr.calls == 1
+    assert rows[0]["transcript_status"] == "needs_review"
+
+
 def test_wer_gate_keeps_matching_asr(make_wav, tmp_path):
     # Gate bật + ASR khớp VTT -> WER 0 -> không flag.
     cfg = SegmentationConfig(**{**_cfg().__dict__, "wer_gate_enabled": True, "wer_gate_max": 0.05})

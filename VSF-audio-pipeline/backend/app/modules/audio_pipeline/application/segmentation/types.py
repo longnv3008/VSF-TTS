@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.modules.audio_pipeline.application.segmentation.music_detect import DEFAULT_MUSIC_KEYWORDS
+
 
 @dataclass(frozen=True)
 class TranscriptCue:
@@ -59,3 +61,5 @@ class SegmentationConfig:
     quality_gate_min_tokens_for_long_segment: int = 2
     wer_gate_enabled: bool = False
     wer_gate_max: float = 0.05
+    wer_gate_skip_music: bool = True
+    wer_gate_music_keywords: tuple[str, ...] = DEFAULT_MUSIC_KEYWORDS

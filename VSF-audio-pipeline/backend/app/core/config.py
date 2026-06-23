@@ -114,6 +114,10 @@ class Settings(BaseSettings):
     # Tắt mặc định (ASR mỗi segment rất nặng); bật để flag segment lệch caption.
     wer_gate_enabled: bool = Field(default=False, alias="WER_GATE_ENABLED")
     wer_gate_max: float = Field(default=0.05, alias="WER_GATE_MAX")
+    # Video nhạc over-flag (whisper base dở giọng hát) -> bỏ gate cho title nhạc.
+    wer_gate_skip_music: bool = Field(default=True, alias="WER_GATE_SKIP_MUSIC")
+    # Keyword bổ sung (CSV) ngoài default; rỗng = chỉ dùng default. Vd "grey d,mck".
+    wer_gate_music_keywords: str = Field(default="", alias="WER_GATE_MUSIC_KEYWORDS")
 
     # Tách vocal bằng Demucs trước normalize (chạy trên raw, giữ chất lượng tách).
     # Tắt mặc định -> pipeline giữ nguyên hành vi cũ. Command trỏ env riêng có torch.

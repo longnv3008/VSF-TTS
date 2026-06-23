@@ -16,6 +16,7 @@ from app.modules.audio_pipeline.application.segmentation.segment_writer import (
     cut_wav_segment,
     write_text,
 )
+from app.modules.audio_pipeline.application.segmentation.music_detect import is_music_title
 from app.modules.audio_pipeline.application.segmentation.sentence_grouper import cues_to_sentence_units
 from app.modules.audio_pipeline.application.segmentation.text_quality import (
     has_promo_marker,
@@ -106,6 +107,11 @@ def segment_video(
     wav_path = Path(processed_row["audio_file_path"])
     subtitle_path = processed_row.get("subtitle_file_path", "")
 
+    # Video nhạc -> bỏ WER gate (whisper base over-flag giọng hát). Tính 1 lần/video.
+    skip_wer_gate = config.wer_gate_skip_music and is_music_title(
+        processed_row.get("title", ""), keywords=config.wer_gate_music_keywords
+    )
+
     sink = timing_sink or _NULL_SINK
 
     if stage_notifier:
@@ -190,7 +196,7 @@ def segment_video(
 
         # WER gate (QA alignment): ASR hypothesis vs VTT reference. Tắt mặc định
         # vì ASR mỗi segment rất nặng. WER cao -> caption lệch tiếng -> flag review.
-        if config.wer_gate_enabled and quality.keep and text:
+        if config.wer_gate_enabled and not skip_wer_gate and quality.keep and text:
             _t = perf_counter()
             hyp = asr_adapter.transcribe(seg_wav).strip()
             sink.add("asr", perf_counter() - _t)
