@@ -13,7 +13,7 @@ from app.modules.audio_pipeline.application.segmentation.metadata_fields import 
     SEGMENT_METADATA_FIELDS,
 )
 from app.modules.audio_pipeline.application.segmentation.wer_canonical import (
-    align,
+    align_windowed,
     micro_average,
     normalize,
     tokens,
@@ -94,7 +94,7 @@ class SegmentReviewService:
             target["manual_wer"] = ""
             target["review_status"] = "skipped"
         else:
-            counts = align(ref_tokens, hyp_tokens)
+            counts = align_windowed(ref_tokens, hyp_tokens)
             target["reference"] = reference
             target["manual_wer"] = f"{counts.wer:.4f}"
             target["review_status"] = "reviewed"
@@ -112,7 +112,7 @@ class SegmentReviewService:
             ref_tokens = tokens(normalize(r.get("reference", "")))
             hyp_tokens = tokens(normalize(r.get("text", "")))
             if status == "reviewed" and ref_tokens:
-                counts_list.append(align(ref_tokens, hyp_tokens))
+                counts_list.append(align_windowed(ref_tokens, hyp_tokens))
                 reviewed += 1
             elif status == "skipped":
                 if hyp_tokens:

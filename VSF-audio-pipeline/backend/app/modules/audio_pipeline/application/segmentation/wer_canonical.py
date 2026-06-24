@@ -133,6 +133,35 @@ def align(ref: list[str], hyp: list[str]) -> Counts:
     return c
 
 
+def align_windowed(ref: list[str], hyp: list[str]) -> Counts:
+    """WER chỉ trên span label, bỏ DEL/INS ở RÌA.
+
+    Audio clip cố ý padding (pad+slack+overlap) -> ref người gõ ôm đuôi câu trước
+    + đầu câu sau. Những từ thừa đó nằm ở hai rìa alignment. Trim chúng để đo đúng
+    chất lượng label, vẫn giữ lỗi GIỮA span (sub/del/ins thật). Không khớp token nào
+    -> fallback align đầy đủ (label rác thật).
+    """
+    full = align(ref, hyp)
+    matched = [k for k, op in enumerate(full.ops) if op[0] in (EQUAL, SUB)]
+    if not matched:
+        return full
+    window = full.ops[matched[0] : matched[-1] + 1]
+    c = Counts()
+    for tag, r, _h in window:
+        if tag == EQUAL:
+            c.cor += 1
+        elif tag == SUB:
+            c.sub += 1
+        elif tag == DEL:
+            c.dele += 1
+        else:
+            c.ins += 1
+        if r is not None:
+            c.n_ref += 1
+    c.ops = window
+    return c
+
+
 def micro_average(counts_list: list[Counts]) -> float:
     tot_err = sum(c.errors for c in counts_list if c.n_ref > 0)
     tot_n = sum(c.n_ref for c in counts_list if c.n_ref > 0)

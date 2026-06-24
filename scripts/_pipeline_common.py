@@ -26,6 +26,7 @@ def make_vad_args(args: argparse.Namespace) -> argparse.Namespace:
         stop_secs=args.stop_secs,
         merge_gap_secs=args.merge_gap_secs,
         min_speech_secs=args.min_speech_secs,
+        segment_pad_secs=args.segment_pad_secs,
         refine_boundaries=args.refine_boundaries,
         refine_energy_db_below_peak=args.refine_energy_db_below_peak,
         refine_energy_min_rms=args.refine_energy_min_rms,
