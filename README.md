@@ -69,13 +69,18 @@ flowchart TD
 | **2 — Clean** | `scripts/end_to_end_pipeline.py` | [docs/phase-02-clean.md](docs/phase-02-clean.md) | ffmpeg → mono 16kHz 16-bit |
 | **3 — VAD** | `VAD/` | [VAD/README.md](VAD/README.md) · [docs/phase-03-vad.md](docs/phase-03-vad.md) | Silero V6 ONNX segmentation |
 | **4 — Label** | `scripts/` | [scripts/README.md](scripts/README.md) · [docs/phase-04-label.md](docs/phase-04-label.md) | Cut WAV + manifest |
-| **5 — Finetune** | `finetune/` | [finetune/README.md](finetune/README.md) · [docs/phase-05-finetune.md](docs/phase-05-finetune.md) | Retrain VAD model |
+| **5 — Finetune** | `finetune/` (VAD) · `finetune_asr/` (ASR LoRA) | [finetune/README.md](finetune/README.md) · [finetune_asr/README.md](finetune_asr/README.md) · [docs/phase-05-finetune.md](docs/phase-05-finetune.md) | Retrain VAD model; LoRA-finetune ASR for the WER gate |
 | **6 — Eval** | `eval/wer/` | [eval/wer/README.md](eval/wer/README.md) · [docs/phase-06-eval.md](docs/phase-06-eval.md) | WER/CER quality check |
 
 Not tracked (see [.gitignore](.gitignore)): virtualenvs, `pipeline_runs/` output,
-datasets (`finetune/data*`), logs. The crawler at `VSF-audio-pipeline`
-is a **git submodule** (pinned commit, fetched on clone). Small model artifacts
-(`*.onnx`, `*.pth`) **are** committed so the pipeline runs after clone.
+datasets (`finetune/data*`), logs. The crawler at `VSF-audio-pipeline/` is an
+**in-repo folder** — committed directly, **not a git submodule**; its own bulky
+content (venvs/data/logs) is ignored by its nested `.gitignore`. Small model
+artifacts (`*.onnx`, `*.pth`) **are** committed so the pipeline runs after clone.
+
+Auxiliary tooling (outside the pipeline phases): [`audio-labelling/`](audio-labelling/)
+— Label Studio scripts for human review/labelling of segments (clone a template
+project per JSON batch, convert export formats).
 
 ## Khi có vấn đề → tìm ở đâu
 
@@ -94,14 +99,13 @@ is a **git submodule** (pinned commit, fetched on clone). Small model artifacts
 Prereqs: **Python 3.12**, **ffmpeg** in PATH, **git**, **uv**.
 
 ```powershell
-git clone --recursive <this-repo-url> TTS    # --recursive pulls the crawler submodule
+git clone <this-repo-url> TTS      # VSF-audio-pipeline crawler is in-repo (no submodule)
 cd TTS
 .\setup_new_machine.ps1            # builds CPU venvs + crawler backend env
 .\setup_new_machine.ps1 -Gpu       # also build .venv-demucs-cu128 (needs CUDA 12.8)
 .\setup_new_machine.ps1 -Smoke     # run the offline smoke test after setup
 ```
 
-Already cloned without `--recursive`? Run `git submodule update --init --recursive`.
 Manual (not in git): the crawler's `.env` (from its `.env.example`) and
 `VSF-audio-pipeline/cookies/youtube.txt` for crawling.
 

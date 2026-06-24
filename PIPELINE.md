@@ -66,15 +66,16 @@ specific env. Vocal stems land in `<work-dir>/vocals/`.
 
 ## Plug in a crawler repo
 
-The GitHub repo `longnv3008/VSF-audio-pipeline.git` is wired in as a **git submodule** at:
+The crawler `VSF-audio-pipeline/` is an **in-repo folder** — committed directly, **not a git submodule** — at:
 
 ```text
 VSF-audio-pipeline
 ```
 
-Fresh clones get it via `git clone --recursive`; otherwise run
-`git submodule update --init --recursive`. Its backend env is built with
-`uv sync --project VSF-audio-pipeline/backend` (see `setup_new_machine.ps1`).
+It comes with a normal `git clone` — no `--recursive` / `git submodule update`
+needed. Its backend env is built with `uv sync --project VSF-audio-pipeline/backend`
+(see `setup_new_machine.ps1`). The folder's own bulky content (venvs/data/logs)
+is ignored by its nested `.gitignore`.
 
 Relevant docs/code read from that repo:
 

@@ -42,7 +42,7 @@ AI/agent đọc file này trước. Sau đó mở phase doc liên quan khi cần
 | **2 — Clean** | `scripts/end_to_end_pipeline.py` | [phase-02-clean.md](phase-02-clean.md) | ffmpeg → mono 16kHz 16-bit WAV |
 | **3 — VAD** | `VAD/` | [phase-03-vad.md](phase-03-vad.md) | Silero V6 ONNX, batch + Triton serving, params, bugs |
 | **4 — Label** | `scripts/` | [phase-04-label.md](phase-04-label.md) | Cut WAV segments, manifest CSV/JSONL |
-| **5 — Finetune** | `finetune/` | [phase-05-finetune.md](phase-05-finetune.md) | Train lại VAD model — chưa deploy |
+| **5 — Finetune** | `finetune/` · `finetune_asr/` | [phase-05-finetune.md](phase-05-finetune.md) · [finetune_asr/README.md](../finetune_asr/README.md) | VAD retrain (chưa deploy) + ASR LoRA finetune cho WER gate |
 | **6 — Eval** | `eval/wer/` | [phase-06-eval.md](phase-06-eval.md) | WER/CER đo chất lượng transcript |
 
 ---
@@ -60,19 +60,26 @@ AI/agent đọc file này trước. Sau đó mở phase doc liên quan khi cần
 
 ---
 
-## Trạng thái dự án (2026-06-18)
+## Trạng thái dự án (2026-06-24)
 
 ### ✅ Hoàn thành & chạy ổn định
 
 - VAD Triton Server (Silero V6 ONNX, Python backend, gRPC)
 - Pipeline E2E: `end_to_end_pipeline.py` + `run_vsf_github_to_labels.py`
-- Demucs vocal separation tích hợp (auto-resolve, raw fallback)
-- Transcript-aligned segmentation: `segment_youtube_audio_with_vad_transcript.py`
-- Bug fixes: `model.py` guard, `client.py` WAV close, `microphone.py` Ctrl+C
+- Demucs vocal separation (auto route theo noise floor, raw fallback, env CPU/GPU)
+- Segmentation theo word-timestamp: parser VTT word-level → gom câu
+  (`words_to_sentence_units`), default on qua `segmentation_word_split`, fallback
+  về cue khi thiếu word-timing; `SENTENCE_MAX_SEC=14`
+- WER gate hardening (ASR vs VTT, off by default): VLSP normalize, **music-skip**
+  (`music_detect.py`), **LLM judge** (`llm_judge.py`), windowed WER
+  (`align_windowed` — đo trên span label, bỏ từ thừa do padding rìa)
+- ASR LoRA finetune: `finetune_asr/` (augment, Optuna HPO, CT2 export) để hạ WER gate
+- Human labelling: `audio-labelling/` (Label Studio — clone project, convert format)
 
 ### ⚠️ Chưa hoàn thành / còn mở
 
-- **Finetune model chưa deploy** — smoke run OK nhưng Detection@0.7 chưa cải thiện so baseline
+- **VAD finetune chưa deploy** — smoke run OK nhưng Detection@0.7 chưa beat baseline
+- **ASR LoRA**: before/after WER trực tiếp còn deferred (cần chạy lại pipeline Docker)
 - Dockerfile Triton còn dùng image `22.11` (cũ, 2022) — chưa upgrade 24.x
 - `context` concatenation trong `vad.py` khác chuẩn Silero — chưa benchmark
 
