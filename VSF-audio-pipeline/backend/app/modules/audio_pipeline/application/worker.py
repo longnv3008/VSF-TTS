@@ -229,6 +229,11 @@ def enqueue_pipeline_job(job_id: int) -> None:
             str(exc),
             len(exc.remaining_urls),
         )
+        start_discovery_cycle(
+            trigger="batch_failed",
+            completed_job_id=job.id if job else None,
+            completed_batch_name=job.batch_name if job else None,
+        )
     except Exception as exc:
         if job is None:
             job = job_service.get_job_optional(job_id)
@@ -239,5 +244,10 @@ def enqueue_pipeline_job(job_id: int) -> None:
             job_service.save_job(job)
             publish_job_event("job_failed", job)
         logger.exception("%s | job_id=%s", format_function_error("enqueue_pipeline_job", exc), job_id)
+        start_discovery_cycle(
+            trigger="job_exception",
+            completed_job_id=job.id if job else None,
+            completed_batch_name=job.batch_name if job else None,
+        )
     finally:
         db.close()

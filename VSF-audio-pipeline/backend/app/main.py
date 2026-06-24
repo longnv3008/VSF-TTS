@@ -59,10 +59,65 @@ def _validate_runtime_paths() -> list[str]:
     return issues
 
 
+def _cleanup_zombie_jobs() -> None:
+    """Mark zombie running/queued jobs as failed on startup.
+
+    Khi container restart, các jobs đang running/queued sẽ bị stuck vĩnh viễn
+    vì worker thread đã chết. Cần dọn để discovery có thể chạy.
+    """
+    from app.modules.audio_pipeline.domain.models import PipelineJob, PipelineJobUrl
+
+    db = SessionLocal()
+    try:
+        zombie_jobs = (
+            db.query(PipelineJob)
+            .filter(PipelineJob.status.in_({"running", "queued"}))
+            .all()
+        )
+        if not zombie_jobs:
+            logger.info("No zombie jobs found on startup")
+            return
+
+        for job in zombie_jobs:
+            old_status = job.status
+            job.status = "failed"
+            job.current_step = "failed_zombie_cleanup"
+            job.error_message = f"Marked failed on startup — was '{old_status}' when container restarted"
+            db.add(job)
+            # Cũng mark các URL running → failed
+            db.query(PipelineJobUrl).filter(
+                PipelineJobUrl.job_id == job.id,
+                PipelineJobUrl.status.in_({"running"}),
+            ).update(
+                {"status": "failed", "logs_fail": "Container restarted while running"},
+                synchronize_session=False,
+            )
+        db.commit()
+        logger.info(
+            "Cleaned up zombie jobs on startup | count=%s | job_ids=%s",
+            len(zombie_jobs),
+            [j.id for j in zombie_jobs],
+        )
+        send_telegram_log(
+            "Zombie jobs cleaned up on startup",
+            step="startup",
+            status="warning",
+            zombie_count=len(zombie_jobs),
+            job_ids=str([j.id for j in zombie_jobs]),
+        )
+    except Exception as exc:
+        db.rollback()
+        logger.exception("Failed to clean up zombie jobs | error=%s", exc)
+    finally:
+        db.close()
+
+
 def _trigger_startup_discovery() -> None:
     if not settings.discovery_enabled:
         logger.info("Startup discovery disabled | DISCOVERY_ENABLED=false")
         return
+
+    _cleanup_zombie_jobs()
 
     logger.info("Startup discovery enabled | scheduling initial discovery cycle")
     start_discovery_cycle(

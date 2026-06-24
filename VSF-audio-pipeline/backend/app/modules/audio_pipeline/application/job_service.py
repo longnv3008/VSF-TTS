@@ -448,8 +448,7 @@ class PipelineJobService:
     def release_discovery_lock(self) -> None:
         try:
             self.db.execute(
-                text("SELECT pg_advisory_unlock(:lock_key)"),
-                {"lock_key": _DISCOVERY_ADVISORY_LOCK_KEY},
+                text("SELECT pg_advisory_unlock_all()"),
             )
         except Exception as exc:
             error_message = format_function_error("release_discovery_lock", exc)

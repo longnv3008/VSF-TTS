@@ -14,6 +14,26 @@ logger = get_logger(__name__)
 _DISCOVERY_LOCK = threading.Lock()
 _DISCOVERY_COUNTER_LOCK = threading.Lock()
 _DISCOVERY_CYCLE_COUNT = 0
+_RETRY_DELAY_SEC = 60.0  # Retry sau 60s khi không có URL mới hoặc lỗi
+
+
+def _schedule_retry(*, reason: str, delay_sec: float | None = None) -> None:
+    """Schedule discovery retry sau delay. Giữ chain liên tục."""
+    if not settings.discovery_enabled:
+        return
+    retry_delay = delay_sec if delay_sec is not None else _RETRY_DELAY_SEC
+    logger.info("discovery:retry_scheduled | reason=%s | delay_sec=%.1f", reason, retry_delay)
+
+    def _delayed_retry():
+        threading.Event().wait(retry_delay)
+        start_discovery_cycle(
+            trigger=f"retry_{reason}",
+            completed_job_id=None,
+            completed_batch_name=None,
+        )
+
+    thread = threading.Thread(target=_delayed_retry, daemon=True, name="discovery-retry")
+    thread.start()
 
 
 def _reserve_discovery_cycle_slot(*, trigger: str) -> bool:
@@ -76,6 +96,7 @@ def _run_discovery_cycle(*, trigger: str, completed_job_id: int | None, complete
         job_service = PipelineJobService(db)
         if job_service.has_active_jobs():
             logger.info("discovery:skip | reason=active_jobs_present | trigger=%s", trigger)
+            _schedule_retry(reason="active_jobs_present", delay_sec=30.0)
             return
 
         min_delay = max(0.0, settings.discovery_min_delay_sec)
@@ -107,6 +128,7 @@ def _run_discovery_cycle(*, trigger: str, completed_job_id: int | None, complete
         acquired_discovery_lock = job_service.try_acquire_discovery_lock()
         if not acquired_discovery_lock:
             logger.info("discovery:skip | reason=advisory_lock_busy | trigger=%s", trigger)
+            _schedule_retry(reason="advisory_lock_busy", delay_sec=30.0)
             return
 
         discovery_service = DiscoveryService(job_service)
@@ -132,6 +154,7 @@ def _run_discovery_cycle(*, trigger: str, completed_job_id: int | None, complete
                 topic_count=len(query_set.queries),
                 signal_count=len(query_set.signals),
             )
+            _schedule_retry(reason="active_jobs_before_create", delay_sec=30.0)
             return
         if not urls:
             logger.info("discovery:done | created_batch=no | reason=no_new_urls")
@@ -144,6 +167,7 @@ def _run_discovery_cycle(*, trigger: str, completed_job_id: int | None, complete
                 topic_count=len(query_set.queries),
                 signal_count=len(query_set.signals),
             )
+            _schedule_retry(reason="no_new_urls")
             return
 
         batch_name = f"auto_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -180,6 +204,7 @@ def _run_discovery_cycle(*, trigger: str, completed_job_id: int | None, complete
             trigger=trigger,
             error=str(exc),
         )
+        _schedule_retry(reason="exception")
     finally:
         if acquired_discovery_lock and job_service is not None:
             try:
