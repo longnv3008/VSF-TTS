@@ -218,3 +218,11 @@ class BatchSegmentRead(BaseModel):
     title: str | None = None
     audio_url: str
     audio_available: bool = False
+
+
+class BatchSegmentPage(BaseModel):
+    items: list[BatchSegmentRead] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 50
+    has_more: bool = False

@@ -5,6 +5,10 @@ phỏng vấn tiếng miền Trung
 bài giảng tiếng miền Trung
 talkshow tiếng miền Trung
 radio tiếng miền Trung
+đài truyền hình miền Trung
+đài phát thanh miền Trung
+truyền hình miền Trung
+phát thanh miền Trung
 truyện kể tiếng miền Trung
 sách nói tiếng miền Trung
 tọa đàm tiếng miền Trung
@@ -32,6 +36,12 @@ phóng sự giọng miền Trung
 đối thoại giọng miền Trung
 trò chuyện giọng miền Trung
 phỏng vấn giọng miền Trung
+thời sự miền Trung
+thời sự miền Trung giọng địa phương
+bản tin miền Trung
+phóng sự miền Trung
+chương trình truyền hình miền Trung
+chương trình phát thanh miền Trung
 ẩm thực miền Trung giọng miền Trung
 du lịch miền Trung giọng miền Trung
 học tiếng miền Trung
@@ -53,6 +63,50 @@ radio giọng Huế
 radio giọng Nghệ An
 radio giọng Hà Tĩnh
 radio giọng Đà Nẵng
+đài truyền hình Quảng Trị
+đài truyền hình Quảng Nam
+đài truyền hình Nghệ An
+đài truyền hình Huế
+đài truyền hình Đà Nẵng
+đài truyền hình Quảng Bình
+đài truyền hình Hà Tĩnh
+đài truyền hình Quảng Ngãi
+đài truyền hình Bình Định
+đài truyền hình Phú Yên
+đài truyền hình Khánh Hòa
+đài phát thanh Quảng Trị
+đài phát thanh Quảng Nam
+đài phát thanh Nghệ An
+đài phát thanh Huế
+đài phát thanh Đà Nẵng
+đài phát thanh Quảng Bình
+đài phát thanh Hà Tĩnh
+đài phát thanh Quảng Ngãi
+đài phát thanh Bình Định
+đài phát thanh Phú Yên
+đài phát thanh Khánh Hòa
+truyền hình Quảng Trị
+truyền hình Quảng Nam
+truyền hình Nghệ An
+truyền hình Huế
+truyền hình Đà Nẵng
+truyền hình Quảng Bình
+truyền hình Hà Tĩnh
+truyền hình Quảng Ngãi
+truyền hình Bình Định
+truyền hình Phú Yên
+truyền hình Khánh Hòa
+phát thanh Quảng Trị
+phát thanh Quảng Nam
+phát thanh Nghệ An
+phát thanh Huế
+phát thanh Đà Nẵng
+phát thanh Quảng Bình
+phát thanh Hà Tĩnh
+phát thanh Quảng Ngãi
+phát thanh Bình Định
+phát thanh Phú Yên
+phát thanh Khánh Hòa
 truyện kể giọng Quảng Nam
 truyện kể giọng Huế
 truyện kể giọng Nghệ An
@@ -70,3 +124,31 @@ nói chuyện giọng Phú Yên
 nói chuyện giọng Khánh Hòa
 nói chuyện giọng Ninh Thuận
 nói chuyện giọng Bình Thuận
+MC giọng miền Trung
+phát thanh viên giọng miền Trung
+biên tập viên giọng miền Trung
+dẫn chương trình giọng miền Trung
+người dẫn chương trình giọng Huế
+người dẫn chương trình giọng Quảng Nam
+người dẫn chương trình giọng Nghệ An
+MC giọng Quảng Trị
+MC giọng Huế
+MC giọng Đà Nẵng
+MC giọng Quảng Nam
+MC giọng Nghệ An
+thời sự giọng Huế
+thời sự giọng Quảng Trị
+thời sự giọng Đà Nẵng
+thời sự giọng Quảng Nam
+thời sự giọng Nghệ An
+phóng sự giọng Huế
+phóng sự giọng Quảng Trị
+phóng sự giọng Đà Nẵng
+phóng sự giọng Quảng Nam
+phóng sự giọng Nghệ An
+du lịch Huế giọng Huế
+du lịch Đà Nẵng giọng Đà Nẵng
+du lịch Quảng Nam giọng Quảng Nam
+ẩm thực Huế giọng Huế
+ẩm thực Đà Nẵng giọng Đà Nẵng
+ẩm thực Quảng Nam giọng Quảng Nam

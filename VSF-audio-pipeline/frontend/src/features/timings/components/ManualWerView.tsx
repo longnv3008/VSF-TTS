@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
-import { Alert, Button, Card, Empty, Input, Select, Space, Statistic, Tag, Typography } from "antd";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Button, Card, Empty, Input, Select, Skeleton, Space, Statistic, Tag, Typography } from "antd";
 
-import type { BatchSegment } from "../../../entities/job/model";
+import type { BatchSegment, BatchSegmentPage } from "../../../entities/job/model";
 import { fetchBatchSegments } from "../../jobs/api/jobs";
 
 const API_ROOT = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1").replace(/\/api\/v1\/?$/, "");
+const SEGMENTS_PAGE_SIZE = 20;
 
 type ManualWerViewProps = {
   batchOptions: Array<{ value: number; label: string }>;
@@ -70,9 +71,15 @@ function computeWer(reference: string, hypothesis: string): { distance: number; 
 export default function ManualWerView({ batchOptions }: ManualWerViewProps) {
   const [batchId, setBatchId] = useState<number | null>(batchOptions[0]?.value ?? null);
   const [segments, setSegments] = useState<BatchSegment[]>([]);
+  const [totalSegments, setTotalSegments] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [manualBySegment, setManualBySegment] = useState<Record<string, string>>({});
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const requestIdRef = useRef(0);
+  const loadingMoreRef = useRef(false);
 
   useEffect(() => {
     setBatchId((current) => {
@@ -81,25 +88,61 @@ export default function ManualWerView({ batchOptions }: ManualWerViewProps) {
     });
   }, [batchOptions]);
 
-  function loadSegments(nextBatchId: number) {
-    setLoading(true);
+  function applyPage(page: BatchSegmentPage, append: boolean) {
+    setSegments((current) => (append ? [...current, ...page.items] : page.items));
+    setTotalSegments(page.total);
+    setHasMore(page.has_more);
+  }
+
+  function loadSegments(nextBatchId: number, append = false) {
+    if (append && loadingMoreRef.current) return;
+    const nextOffset = append ? segments.length : 0;
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
+    if (append) {
+      loadingMoreRef.current = true;
+      setLoadingMore(true);
+    } else {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+      setLoading(true);
+      setSegments([]);
+      setTotalSegments(0);
+      setHasMore(false);
+      setManualBySegment({});
+    }
     setError(null);
-    fetchBatchSegments(nextBatchId)
-      .then((rows) => {
-        setSegments(rows);
-        setManualBySegment({});
+    fetchBatchSegments(nextBatchId, { offset: nextOffset, limit: SEGMENTS_PAGE_SIZE })
+      .then((page) => {
+        if (requestId !== requestIdRef.current) return;
+        applyPage(page, append);
       })
       .catch((loadError) => {
-        setSegments([]);
-        setManualBySegment({});
+        if (requestId !== requestIdRef.current) return;
+        if (!append) {
+          setSegments([]);
+          setTotalSegments(0);
+          setManualBySegment({});
+        }
         setError(loadError instanceof Error ? loadError.message : "Khong tai duoc segment cua batch");
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (requestId !== requestIdRef.current) return;
+        if (append) {
+          loadingMoreRef.current = false;
+          setLoadingMore(false);
+        } else {
+          setLoading(false);
+        }
+      });
   }
 
   useEffect(() => {
     if (batchId == null) {
       setSegments([]);
+      setTotalSegments(0);
+      setHasMore(false);
+      setManualBySegment({});
       return;
     }
     loadSegments(batchId);
@@ -108,10 +151,12 @@ export default function ManualWerView({ batchOptions }: ManualWerViewProps) {
   const totals = useMemo(() => {
     let totalDistance = 0;
     let totalWords = 0;
+    let totalEnteredWords = 0;
     let checkedCount = 0;
     for (const segment of segments) {
       const manualText = manualBySegment[segment.segment_id] ?? "";
       if (!manualText.trim()) continue;
+      totalEnteredWords += normalizeText(manualText).length;
       const wer = computeWer(segment.text, manualText);
       totalDistance += wer.distance;
       totalWords += wer.wordCount;
@@ -119,10 +164,28 @@ export default function ManualWerView({ batchOptions }: ManualWerViewProps) {
     }
     return {
       checkedCount,
-      totalSegments: segments.length,
+      totalEnteredWords,
+      loadedSegments: segments.length,
+      totalSegments,
       ratio: totalWords > 0 ? totalDistance / totalWords : 0,
     };
-  }, [manualBySegment, segments]);
+  }, [manualBySegment, segments, totalSegments]);
+
+  useEffect(() => {
+    if (!hasMore || loading || loadingMore || batchId == null) return;
+    const target = sentinelRef.current;
+    if (!target) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          loadSegments(batchId, true);
+        }
+      },
+      { rootMargin: "240px 0px" },
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [batchId, hasMore, loading, loadingMore, segments.length]);
 
   return (
     <Space direction="vertical" size={16} style={{ width: "100%" }}>
@@ -142,14 +205,15 @@ export default function ManualWerView({ batchOptions }: ManualWerViewProps) {
       </Space>
 
       <Space size={24} wrap>
-        <Statistic title="So segment" value={segments.length} />
+        <Statistic title="So segment" value={`${totals.loadedSegments}/${totals.totalSegments}`} />
         <Statistic title="Da check" value={totals.checkedCount} />
+        <Statistic title="Tong tu da nhap" value={totals.totalEnteredWords} />
         <Statistic title="WER tong" value={Number((totals.ratio * 100).toFixed(2))} suffix="%" />
       </Space>
 
       {error ? <Alert type="error" showIcon message={error} /> : null}
 
-      {!loading && segments.length === 0 ? <Empty description="Batch này chưa có audio segment để check" /> : null}
+      {!loading && totalSegments === 0 ? <Empty description="Batch này chưa có audio segment để check" /> : null}
 
       {segments.map((segment) => {
         const manualText = manualBySegment[segment.segment_id] ?? "";
@@ -221,6 +285,14 @@ export default function ManualWerView({ batchOptions }: ManualWerViewProps) {
           </Card>
         );
       })}
+
+      {loading ? <Skeleton active paragraph={{ rows: 6 }} /> : null}
+
+      {!loading && hasMore ? (
+        <div ref={sentinelRef}>
+          <Skeleton active loading={loadingMore} paragraph={{ rows: 2 }} title={false} />
+        </div>
+      ) : null}
     </Space>
   );
 }

@@ -110,3 +110,11 @@ export type BatchSegment = {
   audio_url: string;
   audio_available: boolean;
 };
+
+export type BatchSegmentPage = {
+  items: BatchSegment[];
+  total: number;
+  offset: number;
+  limit: number;
+  has_more: boolean;
+};

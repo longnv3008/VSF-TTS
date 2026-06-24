@@ -1,6 +1,7 @@
 import { apiClient } from "../../../shared/api/client";
 import type {
   BatchSegment,
+  BatchSegmentPage,
   BatchTimingSummary,
   Job,
   StageAggregate,
@@ -107,9 +108,14 @@ export async function fetchTimingHistory(limit = 20): Promise<BatchTimingSummary
   }
 }
 
-export async function fetchBatchSegments(batchId: number): Promise<BatchSegment[]> {
+export async function fetchBatchSegments(
+  batchId: number,
+  params?: { offset?: number; limit?: number },
+): Promise<BatchSegmentPage> {
   try {
-    const response = await apiClient.get<BatchSegment[]>(`${AUDIO_PIPELINE_BASE_PATH}/batches/${batchId}/segments`);
+    const response = await apiClient.get<BatchSegmentPage>(`${AUDIO_PIPELINE_BASE_PATH}/batches/${batchId}/segments`, {
+      params,
+    });
     return response.data;
   } catch (error) {
     throw new Error(toErrorMessage(error));

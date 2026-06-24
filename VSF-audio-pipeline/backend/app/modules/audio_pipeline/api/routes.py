@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.modules.audio_pipeline.api.schemas import (
+    BatchSegmentPage,
     BatchSegmentRead,
     BatchRead,
     BatchTimingSummary,
@@ -75,12 +76,14 @@ async def batch_timings_by_video(
     return job_service.batch_timings_by_video(batch_id)
 
 
-@router.get("/batches/{batch_id}/segments", response_model=list[BatchSegmentRead])
+@router.get("/batches/{batch_id}/segments", response_model=BatchSegmentPage)
 async def list_batch_segments(
     batch_id: int,
+    offset: int = 0,
+    limit: int = 50,
     job_service: PipelineJobService = Depends(get_job_service),
-) -> list[BatchSegmentRead]:
-    return job_service.list_batch_segments(batch_id)
+) -> BatchSegmentPage:
+    return job_service.list_batch_segments(batch_id, offset=offset, limit=limit)
 
 
 @router.get("/batches/{batch_id}/segments/{segment_id}/audio")

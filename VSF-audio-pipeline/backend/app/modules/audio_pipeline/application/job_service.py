@@ -155,14 +155,22 @@ class PipelineJobService:
         batch = self.get_batch(batch_id)
         return batch, settings.metadata_dir / f"{batch.name}_segments.csv"
 
-    def list_batch_segments(self, batch_id: int) -> list[dict]:
+    def list_batch_segments(self, batch_id: int, *, offset: int = 0, limit: int = 50) -> dict:
         try:
             batch, csv_path = self._metadata_csv_path(batch_id)
-            rows = read_csv(csv_path)
+            normalized_offset = max(0, offset)
+            normalized_limit = min(max(1, limit), 200)
             segments: list[dict] = []
-            for row in rows:
+            total = 0
+            for row in read_csv(csv_path):
                 segment_id = (row.get("segment_id") or "").strip()
                 if not segment_id:
+                    continue
+                if total < normalized_offset:
+                    total += 1
+                    continue
+                if len(segments) >= normalized_limit:
+                    total += 1
                     continue
                 audio_path = self._resolve_audio_path(row.get("segment_file"))
                 segments.append(
@@ -186,7 +194,16 @@ class PipelineJobService:
                         "audio_available": bool(audio_path and audio_path.exists() and audio_path.is_file()),
                     }
                 )
-            return segments
+                total += 1
+            if len(segments) < normalized_limit:
+                total = normalized_offset + len(segments)
+            return {
+                "items": segments,
+                "total": total,
+                "offset": normalized_offset,
+                "limit": normalized_limit,
+                "has_more": normalized_offset + len(segments) < total,
+            }
         except AudioPipelineError:
             raise
         except Exception as exc:
