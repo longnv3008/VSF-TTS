@@ -77,7 +77,7 @@ def test_apply_waveform_deterministic_with_seed():
 # --- librosa-backed (skip nếu thiếu) ---
 
 def test_pitch_shift_preserves_length():
-    librosa = pytest.importorskip("librosa")
+    pytest.importorskip("librosa")
     from finetune_asr.augment import pitch_shift
 
     y = _sine()
@@ -86,7 +86,7 @@ def test_pitch_shift_preserves_length():
 
 
 def test_time_stretch_changes_length():
-    librosa = pytest.importorskip("librosa")
+    pytest.importorskip("librosa")
     from finetune_asr.augment import time_stretch
 
     y = _sine()

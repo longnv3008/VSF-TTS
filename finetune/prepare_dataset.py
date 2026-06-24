@@ -491,7 +491,7 @@ def main():
     # 1. TTS data
     if not args.no_tts:
         if args.tts_dir.exists():
-            c, l, s = process_tts_dir(
+            c, lbls, s = process_tts_dir(
                 args.tts_dir,
                 label_mode=args.tts_label_mode,
                 energy_db_below_peak=args.tts_energy_db_below_peak,
@@ -499,7 +499,7 @@ def main():
                 energy_pad_ms=args.tts_energy_pad_ms,
             )
             all_chunks.extend(c)
-            all_labels.extend(l)
+            all_labels.extend(lbls)
             all_sources.extend(s)
         else:
             print(f"[WARN] TTS dir không tồn tại: {args.tts_dir}")
@@ -507,12 +507,12 @@ def main():
     # 2. YouTube data (mixed speech + silence)
     if not args.no_youtube:
         if args.youtube_dir.exists() and args.exp_dir.exists():
-            c, l, s = process_youtube_dir(
+            c, lbls, s = process_youtube_dir(
                 args.youtube_dir, args.exp_dir,
                 max_files=args.max_youtube,
             )
             all_chunks.extend(c)
-            all_labels.extend(l)
+            all_labels.extend(lbls)
             all_sources.extend(s)
         else:
             print("[WARN] YouTube dir hoac exp-dir khong ton tai")

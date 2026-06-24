@@ -11,9 +11,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.core.config import settings
-from app.db.base import Base
-from app.modules.audio_pipeline.domain.models import PipelineJob  # noqa: F401
+from app.core.config import settings  # noqa: E402
+from app.db.base import Base  # noqa: E402
+from app.modules.audio_pipeline.domain.models import PipelineJob  # noqa: F401,E402
 
 
 config = context.config

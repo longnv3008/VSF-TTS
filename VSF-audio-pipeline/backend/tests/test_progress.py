@@ -46,7 +46,7 @@ def test_progress_saved_marker_label():
     assert label == "Đã lưu 1/1"
 
 
-from app.modules.audio_pipeline.application.progress import append_step_event
+from app.modules.audio_pipeline.application.progress import append_step_event  # noqa: E402
 
 
 def test_append_first_step_opens_entry():
@@ -74,10 +74,10 @@ def test_append_handles_none_history():
     assert history == [{"step": "crawl_audio", "started_at": "T0", "ended_at": None}]
 
 
-from datetime import datetime, timezone
-from types import SimpleNamespace
+from datetime import datetime, timezone  # noqa: E402
+from types import SimpleNamespace  # noqa: E402
 
-from app.modules.audio_pipeline.api.schemas import JobRead
+from app.modules.audio_pipeline.api.schemas import JobRead  # noqa: E402
 
 
 def _fake_url(status, video_id="v1", url="https://y/v", logs_fail=None):

@@ -111,7 +111,7 @@ def test_resolve_audio_traversal_blocked(service, tmp_path):
     outside.write_bytes(b"x")
     meta = service.metadata_dir
     path = meta / "b1_segments.jsonl"
-    rows = [json.loads(l) for l in path.read_text(encoding="utf-8").splitlines()]
+    rows = [json.loads(ln) for ln in path.read_text(encoding="utf-8").splitlines()]
     rows[0]["segment_file"] = str(outside)
     path.write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n", encoding="utf-8")
     with pytest.raises(ValueError):

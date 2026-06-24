@@ -1,3 +1,5 @@
+# Vendored & customized from label_studio_sdk.converter — kept close to upstream.
+# ruff: noqa
 import io
 import logging
 import math

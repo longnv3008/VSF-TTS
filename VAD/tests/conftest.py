@@ -19,7 +19,7 @@ _TESTS_DIR = Path(__file__).resolve().parent
 if str(_TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(_TESTS_DIR))
 
-from audio_fixtures import (  # noqa: F401 – re-export for convenience
+from audio_fixtures import (  # noqa: F401,E402 – re-export for convenience
     SAMPLE_RATE,
     make_mixed,
     make_silence,

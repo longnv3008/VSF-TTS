@@ -36,7 +36,7 @@ import numpy as np
 import onnxruntime as ort
 
 try:
-    from sklearn.metrics import roc_auc_score, average_precision_score, classification_report
+    from sklearn.metrics import roc_auc_score, average_precision_score
     HAS_SKLEARN = True
 except ImportError:
     HAS_SKLEARN = False
@@ -138,7 +138,6 @@ def evaluate_on_dataset(
         labels = labels[:max_samples]
 
     all_probs = []
-    state = np.zeros((2, 1, 128), dtype=np.float32)
     sr = np.array(SAMPLE_RATE, dtype=np.int64)
     context = np.zeros((1, CONTEXT_SAMPLES), dtype=np.float32)
 

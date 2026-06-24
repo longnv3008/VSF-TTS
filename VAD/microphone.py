@@ -99,7 +99,7 @@ async def main():
             dtype='int16',
             channels=1,
             callback=callback
-        ) as device:
+        ):
             while True:
                 chunk = await audio_queue.get()
 

@@ -306,7 +306,8 @@ def main():
     )
 
     # Loss, optimizer, scheduler
-    criterion = lambda probs, labels: weighted_bce_loss(probs, labels, args.pos_weight)
+    def criterion(probs, labels):
+        return weighted_bce_loss(probs, labels, args.pos_weight)
 
     trainable_params = [p for p in model.parameters() if p.requires_grad]
     optimizer = optim.AdamW(trainable_params, lr=args.lr, weight_decay=args.weight_decay)

@@ -82,7 +82,7 @@ class TestCollectWavFiles:
         assert files == [path.resolve()]
 
     def test_extra_paths_are_appended(self, tmp_path: Path):
-        dir_wav = write_wav(tmp_path / "dir.wav", make_silence(0.1))
+        write_wav(tmp_path / "dir.wav", make_silence(0.1))
         extra_dir = tmp_path / "extra"
         extra_dir.mkdir()
         extra_wav = write_wav(extra_dir / "extra.wav", make_silence(0.1))

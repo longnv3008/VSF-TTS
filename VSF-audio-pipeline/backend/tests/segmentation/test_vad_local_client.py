@@ -37,8 +37,6 @@ def test_detect_regions_builds_region(make_wav):
         [{"signal_type": "QUIET", "signal_at": 0.90}],
     ]
 
-    runtime = _SessionRuntime()
-
     def _factory(*, model_path, config):
         class _RuntimeWrapper:
             def __init__(self):
