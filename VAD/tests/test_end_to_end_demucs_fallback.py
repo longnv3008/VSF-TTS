@@ -6,7 +6,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from audio_fixtures import SAMPLE_RATE, make_mixed, write_wav
+from audio_fixtures import make_mixed, write_wav
 
 _SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "scripts"
 if str(_SCRIPTS_DIR) not in sys.path:

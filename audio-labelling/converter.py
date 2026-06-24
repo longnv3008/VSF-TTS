@@ -11,7 +11,7 @@ from datetime import datetime
 from enum import Enum
 from glob import glob
 from shutil import copy2
-from typing import Optional, List, Tuple
+from typing import Optional
 
 import ijson
 import ujson as json
@@ -31,8 +31,6 @@ from label_studio_sdk.converter.utils import (
     get_annotator,
     get_json_root_type,
     prettify_result,
-    convert_annotation_to_yolo,
-    convert_annotation_to_yolo_obb,
 )
 from label_studio_sdk._extensions.label_studio_tools.core.utils.io import get_local_path
 from label_studio_sdk.converter.exports.yolo import process_and_save_yolo_annotations
@@ -716,8 +714,7 @@ class Converter(object):
             except:
                 logger.info(
                     "Unable to open {image_path}, can't extract width and height for COCO export".format(
-                        image_path=image_path, item=item
-                    ),
+                        image_path=image_path, ),
                     exc_info=True,
                 )
 
@@ -1114,7 +1111,7 @@ class Converter(object):
                     try:
                         _, _, channels = get_image_size_and_channels(full_image_path)
                     except:
-                        logger.warning(f"Can't read channels from image")
+                        logger.warning("Can't read channels from image")
 
             # skip tasks without annotations
             if not item["output"]:

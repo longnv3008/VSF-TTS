@@ -23,7 +23,6 @@ class _Collator:
     processor: Any
 
     def __call__(self, features: list[dict]) -> dict:
-        import torch
 
         input_features = [{"input_features": f["input_features"]} for f in features]
         batch = self.processor.feature_extractor.pad(input_features, return_tensors="pt")

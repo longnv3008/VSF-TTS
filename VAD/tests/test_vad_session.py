@@ -17,7 +17,6 @@ Strategy
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from audio_fixtures import SAMPLE_RATE, make_sine, make_silence
 

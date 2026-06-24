@@ -24,7 +24,6 @@ from app.modules.audio_pipeline.application.segment_review_service import (
 from app.modules.audio_pipeline.application.job_events import job_event_broker, publish_job_event
 from app.modules.audio_pipeline.application.job_service import PipelineJobService
 from app.modules.audio_pipeline.application.worker import enqueue_pipeline_job, start_pipeline_job
-from app.utils import send_telegram_log
 
 # Router này chỉ chịu trách nhiệm nhận request và gọi đúng service.
 router = APIRouter()

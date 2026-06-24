@@ -37,7 +37,6 @@ if sys.stderr.encoding != "utf-8":
 import json
 import os
 import wave
-import random
 from pathlib import Path
 
 import numpy as np
@@ -516,7 +515,7 @@ def main():
             all_labels.extend(l)
             all_sources.extend(s)
         else:
-            print(f"[WARN] YouTube dir hoac exp-dir khong ton tai")
+            print("[WARN] YouTube dir hoac exp-dir khong ton tai")
             print(f"  youtube-dir: {args.youtube_dir} (exists={args.youtube_dir.exists()})")
             print(f"  exp-dir: {args.exp_dir} (exists={args.exp_dir.exists()})")
 

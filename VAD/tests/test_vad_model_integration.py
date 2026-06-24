@@ -31,7 +31,7 @@ from pathlib import Path
 
 import pytest
 
-from audio_fixtures import SAMPLE_RATE, make_vad_args
+from audio_fixtures import make_vad_args
 
 # The ONNX model path is fixed relative to this test file.
 _MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "vad" / "1" / "vad.onnx"

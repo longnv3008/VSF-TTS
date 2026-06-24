@@ -1,8 +1,6 @@
 """Tests for stage_timing.py — no real DB or SSE needed."""
 from __future__ import annotations
 
-from contextlib import contextmanager
-from typing import Iterator
 from unittest.mock import MagicMock, patch
 
 import pytest

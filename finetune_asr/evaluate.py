@@ -53,7 +53,7 @@ def _eval_split(processor, model, ds) -> float:
 
 
 def evaluate(data_dir: str, *, base: str, adapter: str | None, domain_csv: str | None) -> dict:
-    from datasets import Audio, load_from_disk
+    from datasets import load_from_disk
 
     processor, model = _load_model(base, adapter)
     report: dict[str, float] = {}

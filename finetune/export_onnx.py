@@ -137,7 +137,7 @@ def verify_finetuned_vs_original(
     So sánh output của model gốc vs model đã finetune trên random audio.
     Không cần khớp chính xác — chỉ kiểm tra range và behavior hợp lý.
     """
-    print(f"\n[Verify] So sánh Original vs Finetuned model...")
+    print("\n[Verify] So sánh Original vs Finetuned model...")
 
     orig_session = ort.InferenceSession(str(original_onnx), providers=["CPUExecutionProvider"])
     new_session = ort.InferenceSession(str(finetuned_onnx), providers=["CPUExecutionProvider"])
@@ -213,11 +213,11 @@ def main():
         verify_finetuned_vs_original(args.onnx_path, args.output)
 
     print(f"\n{'='*60}")
-    print(f"[Done] Export hoàn tất!")
-    print(f"\nĐể deploy lên Triton server:")
+    print("[Done] Export hoàn tất!")
+    print("\nĐể deploy lên Triton server:")
     print(f"  cp {args.output} {args.onnx_path}")
-    print(f"  docker restart vad-server")
-    print(f"\nHoặc chạy evaluate.py để kiểm tra trước:")
+    print("  docker restart vad-server")
+    print("\nHoặc chạy evaluate.py để kiểm tra trước:")
     print(f"  python evaluate.py --new-model {args.output} --threshold 0.7")
 
 

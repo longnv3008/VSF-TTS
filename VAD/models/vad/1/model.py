@@ -1,6 +1,5 @@
 import sys
 import os
-import time
 import json
 from typing import Dict
 import numpy as np

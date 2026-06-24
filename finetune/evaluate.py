@@ -380,7 +380,7 @@ def main():
                 writer.writerows(tts_rows)
             print(f"[Saved] TTS evaluation report → {args.output_csv}")
 
-    print(f"\n[Done] Evaluation hoàn tất.")
+    print("\n[Done] Evaluation hoàn tất.")
     t_key = f"t{int(args.threshold*10)}"
     old_auc = old_metrics.get("auc_roc", 0)
     new_auc = new_metrics.get("auc_roc", 0)

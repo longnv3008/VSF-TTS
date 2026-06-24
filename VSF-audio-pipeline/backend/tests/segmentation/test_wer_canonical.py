@@ -1,7 +1,6 @@
 from math import isnan
 
 from app.modules.audio_pipeline.application.segmentation.wer_canonical import (
-    Counts,
     align,
     align_windowed,
     micro_average,

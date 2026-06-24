@@ -286,7 +286,7 @@ def main():
     train_npz = args.data_dir / "train.npz"
     val_npz = args.data_dir / "val.npz"
     if not train_npz.exists() or not val_npz.exists():
-        print(f"[ERROR] Chưa có data. Chạy prepare_dataset.py trước.")
+        print("[ERROR] Chưa có data. Chạy prepare_dataset.py trước.")
         print(f"  Missing: {train_npz if not train_npz.exists() else val_npz}")
         sys.exit(1)
 
@@ -414,7 +414,7 @@ def main():
         print()
 
     print(f"\n{'='*60}")
-    print(f"[Done] Training hoàn tất!")
+    print("[Done] Training hoàn tất!")
     print(f"  Best epoch: {best_epoch} | Best metric: {best_auc:.4f}")
     print(f"  Best model: {args.checkpoint_dir / 'best_model.pth'}")
     print(f"  Log: {args.log_file}")
