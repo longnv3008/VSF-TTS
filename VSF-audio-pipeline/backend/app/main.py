@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.core.logging import configure_logging
 from app.db.session import SessionLocal
 from app.modules.audio_pipeline.application.exceptions import AudioPipelineError
+from app.modules.audio_pipeline.application.discovery_orchestrator import start_discovery_cycle
 from app.modules.audio_pipeline.application.job_events import publish_job_event
 from app.modules.audio_pipeline.application.job_service import PipelineJobService
 from app.modules.audio_pipeline.application.worker import start_pipeline_job
@@ -56,6 +57,19 @@ def _validate_runtime_paths() -> list[str]:
                 issues.append(f"discovery_topic_file_missing: {topic_path}")
 
     return issues
+
+
+def _trigger_startup_discovery() -> None:
+    if not settings.discovery_enabled:
+        logger.info("Startup discovery disabled | DISCOVERY_ENABLED=false")
+        return
+
+    logger.info("Startup discovery enabled | scheduling initial discovery cycle")
+    start_discovery_cycle(
+        trigger="startup_idle",
+        completed_job_id=None,
+        completed_batch_name=None,
+    )
 
 
 @asynccontextmanager
@@ -154,6 +168,7 @@ async def lifespan(_: FastAPI):
             db.close()
     else:
         logger.info("Startup auto-resume disabled | RESUME_INCOMPLETE_JOBS_ON_STARTUP=false")
+    _trigger_startup_discovery()
     yield
 
 
